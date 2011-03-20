@@ -27,8 +27,8 @@ class VersioncontrolGitHistorySynchronizerDefault implements VersioncontrolRepos
     $this->verify();
     $this->prepare();
 
-    // FIXME this is temporary; the entirety of the logic called below this
-    // function needs to be moved into this class.
+    // FIXME this is temporary; the entirety of the logic called in and below
+    // this function needs to be moved into this class.
     _versioncontrol_git_log_update_repository($repository);
   }
 
