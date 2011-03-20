@@ -1,6 +1,6 @@
 <?php
 
-class VersioncontrolGitHistorySynchronizerDefault implements VersioncontrolRepositoryHistorySynchronizerInterface {
+class VersioncontrolGitRepositoryHistorySynchronizerDefault implements VersioncontrolRepositoryHistorySynchronizerInterface {
 
   protected $repository;
 
