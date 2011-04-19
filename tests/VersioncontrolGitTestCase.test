@@ -63,6 +63,9 @@ abstract class VersioncontrolGitTestCase extends VersioncontrolTestCase {
 
     $data = array(
       'root' => $path,
+      'plugins' => array(
+        'reposync' => 'git_default',
+      ),
     )  + $data;
 
     $repo = $this->versioncontrolCreateRepository('git', $data);
@@ -125,7 +128,8 @@ abstract class VersioncontrolGitTestCase extends VersioncontrolTestCase {
    *   to synchronize.
    */
   public function versioncontrolSyncTestRepository(VersioncontrolGitRepository $repository) {
-    $synced = $repository->fetchLogs();
+    $sync = $repository->getSynchronizer();
+    $synced = $sync->initialSync();
 
     if (!$this->testRepoChecked) {
       // It's pointless to run these checks more than once.

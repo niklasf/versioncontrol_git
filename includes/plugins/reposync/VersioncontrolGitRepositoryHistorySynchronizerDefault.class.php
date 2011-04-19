@@ -29,11 +29,17 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     // FIXME this is temporary; the entirety of the logic called in and below
     // this function needs to be moved into this class.
-    _versioncontrol_git_log_update_repository($repository);
+    require_once drupal_get_path('module', 'versioncontrol_git') .'/versioncontrol_git.log.inc';
+    return _versioncontrol_git_log_update_repository($this->repository);
   }
 
   public function initialSync() {
-    // TODO halstead's optimized fast-export-based parser goes here.
+    $this->verify();
+    $this->prepare();
+
+    // TODO halstead's optimized fast-export-based parser goes here. But for now, just use the same old crap
+    require_once drupal_get_path('module', 'versioncontrol_git') .'/versioncontrol_git.log.inc';
+    return _versioncontrol_git_log_update_repository($this->repository);
   }
 
   public function dumbSync($data) {
