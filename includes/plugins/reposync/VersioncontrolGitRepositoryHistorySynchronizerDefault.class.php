@@ -42,7 +42,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return _versioncontrol_git_log_update_repository($this->repository);
   }
 
-  public function dumbSync($data) {
+  public function syncDataEvent($data) {
 
   }
 
