@@ -99,8 +99,6 @@ function versioncontrol_git_schema() {
       'refname' => array(
         'description' => 'The name of the ref that was updated.',
         'type' => 'varchar',
-        'mysql_type' => "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin",
-        'length' => 255,
         'not null' => TRUE,
       ),
       'label_id' => array(
@@ -139,6 +137,14 @@ function versioncontrol_git_schema() {
       'new_obj' => array('new_obj'),
     ),
   );
+  
+  if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
+    // This is evil, but there is not standard way to change a field collation.
+    $schema['versioncontrol_git_event_data']['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
+  }
+  else {
+    $schema['versioncontrol_git_event_data']['fields']['refname'] = 255;
+  }
 
   return $schema;
 }
@@ -257,8 +263,6 @@ function versioncontrol_git_update_6203() {
       'refname' => array(
         'description' => 'The name of the ref that was updated.',
         'type' => 'varchar',
-        'mysql_type' => "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin",
-        'length' => 255,
         'not null' => TRUE,
       ),
       'label_id' => array(
@@ -297,6 +301,14 @@ function versioncontrol_git_update_6203() {
       'new_obj' => array('new_obj'),
     ),
   );
+  
+  if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
+    // This is evil, but there is not standard way to change a field collation.
+    $schema['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
+  }
+  else {
+    $schema['fields']['refname'] = 255;
+  }
 
   db_create_table($ret, 'versioncontrol_git_event_data', $schema);
   return $ret;
