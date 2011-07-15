@@ -87,6 +87,59 @@ function versioncontrol_git_schema() {
     'primary key' => array('item_revision_id'),
   );
 
+  $schema['versioncontrol_git_event_data'] = array(
+    'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
+    'fields' => array(
+      'elid' => array(
+        'description' => 'Foreign key to {versioncontrol_event_log}.elid; identifies the Git event to which this extended linking data corresponds.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'refname' => array(
+        'description' => 'The name of the ref that was updated.',
+        'type' => 'varchar',
+        'mysql_type' => "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin",
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'label_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'reftype' => array(
+        'description' => '2 == branch, 3 == tag.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'old_obj' => array(
+        'description' => 'The object to which this ref pointed before the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'new_obj' => array(
+        'description' => 'The object to which this ref pointed after the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'commits' => array(
+        'description' => 'For incremental branch updates (i.e., excluding branch creation and deletion), a serialized list of all the commits contained in the push.',
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('elid', 'refname'),
+    'indexes' => array(
+      'old_obj' => array('old_obj'),
+      'new_obj' => array('new_obj'),
+    ),
+  );
+
   return $schema;
 }
 
@@ -187,5 +240,64 @@ function versioncontrol_git_update_6202() {
     }
   }
 
+  return $ret;
+}
+
+function versioncontrol_git_update_6203() {
+  $ret = array();
+  $schema = array(
+    'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
+    'fields' => array(
+      'elid' => array(
+        'description' => 'Foreign key to {versioncontrol_event_log}.elid; identifies the Git event to which this extended linking data corresponds.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'refname' => array(
+        'description' => 'The name of the ref that was updated.',
+        'type' => 'varchar',
+        'mysql_type' => "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin",
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'label_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'reftype' => array(
+        'description' => '2 == branch, 3 == tag.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'old_obj' => array(
+        'description' => 'The object to which this ref pointed before the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'new_obj' => array(
+        'description' => 'The object to which this ref pointed after the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'commits' => array(
+        'description' => 'For incremental branch updates (i.e., excluding branch creation and deletion), a serialized list of all the commits contained in the push.',
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('elid', 'refname'),
+    'indexes' => array(
+      'old_obj' => array('old_obj'),
+      'new_obj' => array('new_obj'),
+    ),
+  );
+
+  db_create_table($ret, 'versioncontrol_git_event_data', $schema);
   return $ret;
 }
