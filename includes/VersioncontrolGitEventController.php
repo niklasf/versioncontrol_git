@@ -15,9 +15,9 @@ class VersioncontrolGitEventController extends VersioncontrolEventController {
       ->execute();
 
     foreach ($result as $row) {
-      // This is just an example - we need to decide how to attach the data to 
-      // VersioncontrolGitEvent objects. We'll want to do at least some unpacking.
-      $queried_entities[$row->elid]->extended_data = $row;
+      foreach ($row as $key => $value) {
+        $queried_entities[$row->elid]->$key = $value;
+      }
     }
   }
 }
