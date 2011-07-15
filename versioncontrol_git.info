@@ -11,4 +11,5 @@ files[] = includes/VersioncontrolGitItem.php
 files[] = includes/VersioncontrolGitItemController.php
 files[] = includes/VersioncontrolGitOperation.php
 files[] = includes/VersioncontrolGitOperationController.php
+files[] = includes/VersioncontrolGitEventController.php
 files[] = includes/VersioncontrolGitRepositoryManagerWorkerInterface.php
