@@ -172,11 +172,11 @@ class VersioncontrolGitEventTests extends VersioncontrolGitTestCase {
     $this->assertEqual($labels[1]->label_id, $tag->label_id, t("The first returned VersioncontrolLabel is the same as the one that was inserted first."));
     
     $branches = array_values($event->loadBranches());
-    $this->assertEqual(count($labels), 1, t("loadBranches method returns the correct amount of VersioncontrolLabel's."));
-    $this->assertEqual($labels[0]->label_id, $branch->label_id, t("The first returned VersioncontrolLabel is the right branch."));
+    $this->assertEqual(count($branches), 1, t("loadBranches method returns the correct amount of VersioncontrolLabel's."));
+    $this->assertEqual($branches[0]->label_id, $branch->label_id, t("The first returned VersioncontrolLabel is the right branch."));
     
     $tags = array_values($event->loadTags());
     $this->assertEqual(count($tags), 1, t("loadTags method returns the correct amount of VersioncontrolLabel's."));
-    $this->assertEqual($labels[0]->label_id, $tag->label_id, t("The first returned VersioncontrolLabel is the right tag."));
+    $this->assertEqual($tags[0]->label_id, $tag->label_id, t("The first returned VersioncontrolLabel is the right tag."));
   }
 }

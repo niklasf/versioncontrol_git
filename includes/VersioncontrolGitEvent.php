@@ -71,23 +71,19 @@ class VersioncontrolGitEvent extends VersioncontrolEvent {
    * Load all commit objects associated with this event.
    */
   public function loadCommits() {
-    static $commits;
+    $commits = array();
+    $commits_raw = unserialize($this->commits);
     
-    if (!isset($commits)) {
-      $commits = array();
-      $commits_raw = unserialize($this->commits);
+    if (!empty($commits_raw)) {
+      $condition = 
+        array(
+          'values' => $commits_raw,
+          'operator' => 'IN',
+        );
       
-      if (!empty($commits_raw)) {
-        $condition = 
-          array(
-            'values' => $commits_raw,
-            'operator' => 'IN',
-          );
-        
-        $conditions = array('revision' => $condition);
-        
-        $commits = $this->getRepository()->loadCommits(NULL, $conditions);
-      }
+      $conditions = array('revision' => $condition);
+      
+      $commits = $this->getRepository()->loadCommits(NULL, $conditions, array('may cache' => FALSE));
     }
     
     return $commits;
@@ -121,7 +117,7 @@ class VersioncontrolGitEvent extends VersioncontrolEvent {
     
     foreach ($commits as $commit) {
       foreach ($commit->labels as $label) {
-        if (emtpy($type) || ($label->type == $type)) {
+        if (is_null($type) || ($label->type == $type)) {
           $labels[$label->name] = $label;
         }
       }
