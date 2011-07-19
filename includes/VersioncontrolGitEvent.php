@@ -3,7 +3,7 @@
  * @file
  * Event class
  */
- drupal_set_message('hello world');
+
 /**
  * Stuff that happened in a repository at a specific time
  */
@@ -71,20 +71,23 @@ class VersioncontrolGitEvent extends VersioncontrolEvent {
    * Load all commit objects associated with this event.
    */
   public function loadCommits() {
-    $commits_raw = unserialize($this->commits);
+    static $commits;
     
-    $commits = array();
-    
-    if (!empty($commits_raw)) {
-      $condition = 
-        array(
-          'values' => $commits_raw,
-          'operator' => 'IN',
-        );
+    if (!isset($commits)) {
+      $commits = array();
+      $commits_raw = unserialize($this->commits);
       
-      $conditions = array('revision' => $condition);
-      
-      $commits = $this->getRepository()->loadCommits(NULL, $conditions);
+      if (!empty($commits_raw)) {
+        $condition = 
+          array(
+            'values' => $commits_raw,
+            'operator' => 'IN',
+          );
+        
+        $conditions = array('revision' => $condition);
+        
+        $commits = $this->getRepository()->loadCommits(NULL, $conditions);
+      }
     }
     
     return $commits;
@@ -94,18 +97,37 @@ class VersioncontrolGitEvent extends VersioncontrolEvent {
    * Load all branches associated with this event.
    */
   public function loadBranches() {
+    return $this->_loadLabels(VERSIONCONTROL_LABEL_BRANCH);
   }
 
   /**
    * Load all tags associated with this event.
    */
   public function loadTags() {
+    return $this->_loadLabels(VERSIONCONTROL_LABEL_TAG);
   }
 
   /**
    * Load all branches AND tags associated with this event.
    */
   public function loadLabels() {
+    return $this->_loadLabels();
+  }
+  
+  private function _loadLabels($type = NULL) {
+    $commits = $this->loadCommits();
+    
+    $labels = array();
+    
+    foreach ($commits as $commit) {
+      foreach ($commit->labels as $label) {
+        if (emtpy($type) || ($label->type == $type)) {
+          $labels[$label->name] = $label;
+        }
+      }
+    }
+    
+    return $labels;
   }
   
 }
