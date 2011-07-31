@@ -137,7 +137,7 @@ function versioncontrol_git_schema() {
       'new_obj' => array('new_obj'),
     ),
   );
-  
+
   if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
     // This is evil, but there is not standard way to change a field collation.
     $schema['versioncontrol_git_event_data']['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
@@ -249,6 +249,10 @@ function versioncontrol_git_update_6202() {
   return $ret;
 }
 
+/**
+ * Introduce the {versioncontrol_git_event_data} table, which stores extended
+ * "event" (e.g., push) data in tandem with {versioncontrol_event_log}.
+ */
 function versioncontrol_git_update_6203() {
   $ret = array();
   $schema = array(
@@ -301,7 +305,7 @@ function versioncontrol_git_update_6203() {
       'new_obj' => array('new_obj'),
     ),
   );
-  
+
   if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
     // This is evil, but there is not standard way to change a field collation.
     $schema['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
