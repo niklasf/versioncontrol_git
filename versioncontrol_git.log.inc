@@ -126,7 +126,7 @@ function _versioncontrol_git_log_exec($command) {
   $logs = array();
   $git_bin = variable_get('versioncontrol_git_binary_path', 'git');
   if ($errors = _versioncontrol_git_binary_check_path($git_bin)) {
-    watchdog('versioncontrol_git', '!errors', array('!errors' => implode('<br />', $errors)), WATCHDOG_ERROR);
+    watchdog('versioncontrol', '!errors', array('!errors' => implode('<br />', $errors)), WATCHDOG_ERROR);
     return array();
   }
   exec(escapeshellcmd("$git_bin $command"), $logs);
@@ -317,11 +317,11 @@ function _versioncontrol_git_log_parse_and_insert_commit(VersioncontrolRepositor
   $merge = isset($parents[1]); // Multiple parents indicates a merge
 
   // Get author data
-  $author_name = trim(next($logs));
-  $author_email = trim(next($logs));
+  $author_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+  $author_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
   // Get committer data
-  $committer_name = trim(next($logs));
-  $committer_email = trim(next($logs));
+  $committer_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+  $committer_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
 
   // Get date as timestamp
   $date = trim(next($logs));
@@ -330,7 +330,7 @@ function _versioncontrol_git_log_parse_and_insert_commit(VersioncontrolRepositor
   // TODO: revisit!
   $message = '';
   $i = 0;
-  while (($line = trim(next($logs))) !== FALSE) {
+  while (($line = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)))) !== FALSE) {
     if ($line == 'ENDOFOUTPUTGITMESSAGEHERE') {
       if (substr($message, -2) === "\n\n") {
         $message = substr($message, 0, strlen($message) - 1);
@@ -515,7 +515,7 @@ function _versioncontrol_git_log_process_tags($repository, $tags_new) {
       }
     }
     else {
-      watchdog('versioncontrol_git', 'Serious problem in tag parsing, please check that you\'re using a supported version of git!');
+      watchdog('versioncontrol', 'Serious problem in tag parsing, please check that you\'re using a supported version of git!');
     }
 
     $tag_data = array(

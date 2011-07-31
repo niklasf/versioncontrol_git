@@ -9,11 +9,13 @@ class VersioncontrolGitBackend extends VersioncontrolBackend {
       'account' => 'VersioncontrolGitAccount',
       'operation' => 'VersioncontrolGitOperation',
       'item' => 'VersioncontrolGitItem',
+      'event' => 'VersioncontrolGitEvent',
     );
 
   public $classesControllers = array(
     'operation' => 'VersioncontrolGitOperationController',
     'item' => 'VersioncontrolGitItemController',
+    'event' => 'VersioncontrolGitEventController',
   );
 
   public $defaultViews = array(
