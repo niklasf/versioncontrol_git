@@ -15,9 +15,11 @@ class VersioncontrolGitEventController extends VersioncontrolEventController {
       ->execute();
 
     foreach ($result as $row) {
-      foreach ($row as $key => $value) {
-        $queried_entities[$row->elid]->$key = $value;
+      if (!isset($queried_entities[$row->elid]->refs)) {
+        $queried_entities[$row->elid]->refs = array();
       }
+      // TODO we build with objects here but assoc arrays in VersioncontrolGitBackend, that's sloppy
+      $queried_entities[$row->elid]->refs[] = $row;
     }
   }
 }

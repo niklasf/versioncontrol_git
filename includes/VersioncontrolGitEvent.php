@@ -1,92 +1,91 @@
 <?php
 /**
- * @file
- * Event class
+ * Entity class representing a push event that occurred in a tracked
+ * Git repository.
+ *
+ * Is Traversable - if you want to get at all the underlying ref changes
+ * in this event, just foreach() the object.
  */
-
-/**
- * Stuff that happened in a repository at a specific time
- */
-class VersioncontrolGitEvent extends VersioncontrolEvent {
+class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggregate {
 
   /**
-   * The name of the reference that was updated.
+   * An array of the refs that were updated by this event, each
+   * represented as a VersioncontrolGitRefChange object.
    *
-   * @var string
+   * @var array
    */
-  public $refname;
-  
+  public $refs = array();
+
   /**
-   * The identifier of the label.
+   * Populate the Git event object with all its data.
    *
-   * @var int
+   * @param $args
+   *   An array of data provided from a post-receive hook.
    */
-  public $label_id;
-  
-  /**
-   * The type of the reference:
-   *    2 == branch
-   *    3 == tag
-   *
-   * @var int
-   */
-  public $reftype;
-  
-  /**
-   * The object to which this reference pointed before the push.
-   *
-   * @var SHA1
-   */
-  public $old_obj;
-  
-  /**
-   * The object to which this reference pointed after the push.
-   *
-   * @var SHA1
-   */
-  public $new_obj;
-  
-  /**
-   * A list of all the commits contained in the push.
-   *
-   * @var serialized array
-   */
-  public $commits;
-  
-  public function backendInsert($options = array()) {
-    drupal_write_record('versioncontrol_git_event_data', $this);
+  public function build($args = array()) {
+    // Don't build twice.
+    if ($this->built === TRUE) {
+      return;
+    }
+
+    foreach ($args as $prop => $value) {
+      $this->$prop = $value;
+    }
+
+    $refs = array();
+    foreach ($this->refs as $ref) {
+      if ($ref->reftype == VERSIONCONTROL_LABEL_BRANCH) {
+        $refs[$ref->refname] = new VersioncontrolGitBranchChange($ref);
+      }
+      else {
+        // TODO need to accommodate other ref namespaces, such as notes
+        $refs[$ref->refname] = new VersioncontrolGitTagChange($ref);
+      }
+    }
+
+    $this->built = TRUE;
   }
 
-  public function backendUpdate($options = array()) {
+  public function getLabelChanges() {
+    return $this->refs;
+  }
+
+  protected function backendInsert($options = array()) {
+    $this->fillExtendedTable();
+  }
+
+  protected function backendUpdate($options = array()) {
+    $this->cleanExtendedTable();
+    $this->fillExtendedTable();
+    // Flush the extended table, then rewrite the whole thing in one fell swoop.
     drupal_write_record('versioncontrol_git_event_data', $this, 'elid');
   }
 
-  public function backendDelete($options = array()) {
-    db_delete('versioncontrol_git_event_data')
-      ->condition('elid', $this->elid)
-      ->execute();
+  protected function backendDelete($options = array()) {
+    $this->cleanExtendedTable();
   }
-  
-  /**
-   * Load all commit objects associated with this event.
-   */
-  public function loadCommits() {
-    $commits = array();
-    $commits_raw = unserialize($this->commits);
-    
-    if (!empty($commits_raw)) {
-      $condition = 
-        array(
-          'values' => $commits_raw,
-          'operator' => 'IN',
-        );
-      
-      $conditions = array('revision' => $condition);
-      
-      $commits = $this->getRepository()->loadCommits(NULL, $conditions, array('may cache' => FALSE));
+
+  protected function cleanExtendedTable() {
+    db_delete('versioncontrol_git_event_data')
+    ->condition('elid', $this->elid)
+    ->execute();
+  }
+
+  protected function fillExtendedTable() {
+    $fields = array('elid', 'refname', 'label_id', 'reftype', 'old_obj', 'new_obj', 'commits');
+    $query = db_insert('versioncontrol_git_event_data')->fields($fields);
+
+    foreach ($this->refs as $ref) {
+      $query->values($ref->dumpProps());
     }
-    
-    return $commits;
+
+    $query->execute();
+  }
+
+  public function getIterator() {
+    // TODO ensure the array is passed by reference. Since the contents are
+    // objects, they're automagically taken care of, but still.
+    return new ArrayIterator($this->refs);
   }
 
   /**
@@ -102,28 +101,4 @@ class VersioncontrolGitEvent extends VersioncontrolEvent {
   public function loadTags() {
     return $this->_loadLabels(VERSIONCONTROL_LABEL_TAG);
   }
-
-  /**
-   * Load all branches AND tags associated with this event.
-   */
-  public function loadLabels() {
-    return $this->_loadLabels();
-  }
-  
-  private function _loadLabels($type = NULL) {
-    $commits = $this->loadCommits();
-    
-    $labels = array();
-    
-    foreach ($commits as $commit) {
-      foreach ($commit->labels as $label) {
-        if (is_null($type) || ($label->type == $type)) {
-          $labels[$label->name] = $label;
-        }
-      }
-    }
-    
-    return $labels;
-  }
-  
 }
