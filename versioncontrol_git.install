@@ -143,7 +143,7 @@ function versioncontrol_git_schema() {
     $schema['versioncontrol_git_event_data']['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
   }
   else {
-    $schema['versioncontrol_git_event_data']['fields']['refname'] = 255;
+    $schema['versioncontrol_git_event_data']['fields']['refname']['length'] = 255;
   }
 
   return $schema;
@@ -317,7 +317,7 @@ function versioncontrol_git_update_6203() {
     $schema['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
   }
   else {
-    $schema['fields']['refname'] = 255;
+    $schema['fields']['refname']['length'] = 255;
   }
 
   db_create_table($ret, 'versioncontrol_git_event_data', $schema);
