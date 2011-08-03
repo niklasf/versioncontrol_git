@@ -494,6 +494,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return $this->fullSync();
 
 //     foreach ($event as $refupdate) {
+//       // do sync stuff, yarr
+
+//       $refupdate->syncLabel();
+//       $refupdate->update();
 //     }
   }
 
