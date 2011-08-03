@@ -22,25 +22,25 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
     $this->repository = $repository;
   }
-  
+
   protected function fetchBranchesInDatabase() {
     $branches = array();
     $branches_db = $this->repository->loadBranches(array(), array(), array('may cache' => FALSE));
-    
+
     foreach ($branches_db as $key => $branch) {
       $branches[$branch->name] = $branch;
     }
-    
+
     return $branches;
   }
-  
+
   protected function fetchCommitsInDatabase() {
     $commits = $this->repository->loadCommits(array(), array(), array('may cache' => FALSE));
-    
+
     foreach ($commits as &$commit) {
       $commit = $commit->revision;
     }
-    
+
     return $commits;
   }
 
@@ -58,7 +58,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   public function fullSync() {
     $this->verify();
     $this->prepare();
-    
+
     $this->repository->updateLock();
     $this->repository->update();
 
@@ -81,15 +81,15 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     foreach(array_diff_key($branches_repo, $branches_db) as $branch) {
       $branch->insert();
     }
-    
+
     // reload branches, after they was inserted
     $branches = $this->fetchBranchesInDatabase();
-    
+
     // Deleted branches are removed, commits in them are not!
     foreach(array_diff_key($branches_db, $branches_repo) as $branch) {
       $branch->delete();
     }
-    
+
     unset($branches_repo);
     unset($branches_db);
 
@@ -97,7 +97,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
      * Commits
      */
     // Fetch commits from the repo and load them from the db.
-    
+
     // Insert new commits in the database.
     foreach (array_diff($this->repository->fetchCommits(), $this->fetchCommitsInDatabase()) as $hash) {
       $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
@@ -129,10 +129,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
 
     $this->finalize();
-    
+
     return TRUE;
   }
-  
+
   /**
    * Parse the output of 'git log' and insert a commit based on its data.
    *
@@ -216,7 +216,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $op->itemRevisions = $op_items;
     $op->save(array('nested' => TRUE));
   }
-  
+
   /**
    * Returns an array of all branches a given commit is in.
    * @param string $revision
@@ -227,7 +227,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $exec = 'branch --no-color --contains ' . escapeshellarg($revision);
     $logs = $this->execute($exec);
     $branches = array();
-    
+
     while (($line = next($logs)) !== FALSE) {
       $line = trim($line);
       if($line[0] == '*') {
@@ -235,10 +235,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       }
       $branches[] = $branch_label_list[$line];
     }
-    
+
     return $branches;
   }
-  
+
   /**
    * Takes parts of the output of git log and returns all affected OperationItems for a commit.
    * @param array $logs
@@ -302,7 +302,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
     return $op_items;
   }
-  
+
  /**
    * Parse ls-tree with one commit hash and one item.
    */
@@ -315,7 +315,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $blob_hash = array_pop($info);
     return $blob_hash;
   }
-  
+
   /**
    * A function to fill in the source_item for a specific VersioncontrolItem.
    *
@@ -351,7 +351,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
     //TODO unify the way to fail
   }
-  
+
   /**
    * Does all processing to insert the tags in $tags_new in the database.
    * @param VersioncontrolGitRepository $repository
@@ -413,7 +413,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       $tag->insert();
     }
   }
-  
+
   /**
    * Returns a list of tag names with the tagged commits.
    * Handles annotated tags.
@@ -455,7 +455,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
     return $tag_commit_list;
   }
-  
+
   /**
    * Returns a string with fully qualified tag names from an array of tag names.
    * @param array $tags
@@ -473,10 +473,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   protected function execute($command) {
     $output = array();
     $git = _versioncontrol_git_get_binary_path();
-    
+
     if ($git) {
       exec(escapeshellcmd("$git $command"), $output);
-    
+
       array_unshift($output, ''); // FIXME doing it this way is just wrong.
       reset($output); // Reset the array pointer, so that we can use next().
     }
@@ -490,8 +490,11 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return $this->fullSync();
   }
 
-  public function syncDataEvent($data) {
-    // TODO Create VersioncontrolGitEvent and insert into database.
+  public function syncEvent(VersioncontrolEvent $event) {
+    return $this->fullSync();
+
+//     foreach ($event as $refupdate) {
+//     }
   }
 
   public function verifyData() {
@@ -502,11 +505,11 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     putenv("GIT_DIR=". escapeshellcmd($this->repository->root));
     if (!empty($this->repository->locked)) {
       drupal_set_message(t('This repository is locked, there is already a fetch in progress. If this is not the case, press the clear lock button.'), 'error');
-      
+
       return FALSE;
     }
   }
-  
+
   protected function finalize() {
     // Update repository updated field. Displayed on administration interface for documentation purposes.
     $this->repository->updated = time();
