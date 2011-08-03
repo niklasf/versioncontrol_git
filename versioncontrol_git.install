@@ -281,6 +281,12 @@ function versioncontrol_git_update_6203() {
         'size' => 'tiny',
         'not null' => TRUE,
       ),
+      'ff' => array(
+        'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
       'old_obj' => array(
         'description' => 'The object to which this ref pointed before the push.',
         'type' => 'char',
@@ -315,5 +321,22 @@ function versioncontrol_git_update_6203() {
   }
 
   db_create_table($ret, 'versioncontrol_git_event_data', $schema);
+  return $ret;
+}
+
+/**
+ * Add the 'ff' field to {versioncontrol_git_event_data}, which records whether
+ * a branch ref update was fast-forward or not.
+ */
+function versioncontrol_git_update_6204() {
+  $ret = array();
+  $spec = array(
+    'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
+    'type' => 'int',
+    'size' => 'tiny',
+    'not null' => FALSE,
+  );
+
+  db_add_field($ret, 'versioncontrol_git_event_data', 'ff', $spec);
   return $ret;
 }
