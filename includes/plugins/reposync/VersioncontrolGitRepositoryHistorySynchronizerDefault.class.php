@@ -491,6 +491,17 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   }
 
   public function syncEvent(VersioncontrolEvent $event) {
+    // Additional parameter check to the appropriate Git subclass of that
+    // required by the interface itself.
+    if (!$event instanceof VersioncontrolGitEvent) {
+      $msg = 'An incompatible VersioncontrolEvent object (of type @class) was provided to a Git repo synchronizer for event-driven repository sync.';
+      $vars = array(
+        '@class' => get_class($event),
+      );
+      watchdog($msg, $vars, WATCHDOG_ERROR);
+      throw new Exception(strtr($msg, $vars), E_ERROR);
+    }
+
     return $this->fullSync();
 
 //     foreach ($event as $refupdate) {
