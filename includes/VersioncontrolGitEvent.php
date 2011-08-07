@@ -87,18 +87,4 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
     // objects, they're automagically taken care of, but still.
     return new ArrayIterator($this->refs);
   }
-
-  /**
-   * Load all branches associated with this event.
-   */
-  public function loadBranches() {
-    return $this->_loadLabels(VERSIONCONTROL_LABEL_BRANCH);
-  }
-
-  /**
-   * Load all tags associated with this event.
-   */
-  public function loadTags() {
-    return $this->_loadLabels(VERSIONCONTROL_LABEL_TAG);
-  }
 }
