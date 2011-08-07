@@ -42,6 +42,8 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
         $refs[$ref->refname] = new VersioncontrolGitTagChange($ref);
       }
     }
+    
+    $this->refs = $refs;
 
     $this->built = TRUE;
   }
@@ -87,4 +89,5 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
     // objects, they're automagically taken care of, but still.
     return new ArrayIterator($this->refs);
   }
+
 }
