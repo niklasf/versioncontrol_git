@@ -76,7 +76,7 @@ class VersioncontrolGitBackend extends VersioncontrolBackend {
         'label_id' => 0, // init label_id to 0; it'll be updated later.
         'old_sha1' => $start,
         'new_sha1' => $end,
-        'commits' => array(),
+        'commits' => serialize(array()),
       );
     }
 

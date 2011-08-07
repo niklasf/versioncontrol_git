@@ -11,7 +11,6 @@ class VersioncontrolGitBranchChange extends VersioncontrolGitRefChange {
 
   public function __construct($data) {
     parent::__construct($data);
-    $this->commits = is_string($this->commits) ? $this->commits : unserialize($this->commits);
   }
 
   public function getLabel() {
@@ -39,7 +38,7 @@ class VersioncontrolGitBranchChange extends VersioncontrolGitRefChange {
    *   An array of VersioncontrolGitOperation objects.
    */
   public function getIncludedCommits() {
-    return $this->repository->loadCommits(array(), array('revision' => $this->commits));
+    return $this->repository->loadCommits(array(), array('revision' => unserialize($this->commits)));
   }
 }
 

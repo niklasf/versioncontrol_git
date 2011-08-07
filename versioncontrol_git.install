@@ -113,13 +113,13 @@ function versioncontrol_git_schema() {
         'size' => 'tiny',
         'not null' => TRUE,
       ),
-      'old_obj' => array(
+      'old_sha1' => array(
         'description' => 'The object to which this ref pointed before the push.',
         'type' => 'char',
         'length' => 40,
         'not null' => TRUE,
       ),
-      'new_obj' => array(
+      'new_sha1' => array(
         'description' => 'The object to which this ref pointed after the push.',
         'type' => 'char',
         'length' => 40,
@@ -130,11 +130,17 @@ function versioncontrol_git_schema() {
         'type' => 'text',
         'not null' => FALSE,
       ),
+      'ff' => array(
+        'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
     ),
     'primary key' => array('elid', 'refname'),
     'indexes' => array(
-      'old_obj' => array('old_obj'),
-      'new_obj' => array('new_obj'),
+      'old_sha1' => array('old_sha1'),
+      'new_sha1' => array('new_sha1'),
     ),
   );
 
@@ -287,13 +293,13 @@ function versioncontrol_git_update_6203() {
         'size' => 'tiny',
         'not null' => FALSE,
       ),
-      'old_obj' => array(
+      'old_sha1' => array(
         'description' => 'The object to which this ref pointed before the push.',
         'type' => 'char',
         'length' => 40,
         'not null' => TRUE,
       ),
-      'new_obj' => array(
+      'new_sha1' => array(
         'description' => 'The object to which this ref pointed after the push.',
         'type' => 'char',
         'length' => 40,
@@ -307,8 +313,8 @@ function versioncontrol_git_update_6203() {
     ),
     'primary key' => array('elid', 'refname'),
     'indexes' => array(
-      'old_obj' => array('old_obj'),
-      'new_obj' => array('new_obj'),
+      'old_sha1' => array('old_sha1'),
+      'new_sha1' => array('new_sha1'),
     ),
   );
 

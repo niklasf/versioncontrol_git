@@ -34,12 +34,12 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
 
     $refs = array();
     foreach ($this->refs as $ref) {
-      if ($ref->reftype == VERSIONCONTROL_LABEL_BRANCH) {
-        $refs[$ref->refname] = new VersioncontrolGitBranchChange($ref);
+      if ($ref['reftype'] == VERSIONCONTROL_LABEL_BRANCH) {
+        $refs[$ref['refname']] = new VersioncontrolGitBranchChange($ref);
       }
       else {
         // TODO need to accommodate other ref namespaces, such as notes
-        $refs[$ref->refname] = new VersioncontrolGitTagChange($ref);
+        $refs[$ref['refname']] = new VersioncontrolGitTagChange($ref);
       }
     }
     
@@ -74,10 +74,11 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
   }
 
   protected function fillExtendedTable() {
-    $fields = array('elid', 'refname', 'label_id', 'reftype', 'old_obj', 'new_obj', 'commits');
+    $fields = array('elid', 'refname', 'label_id', 'reftype', 'old_sha1', 'new_sha1', 'commits', 'ff');
     $query = db_insert('versioncontrol_git_event_data')->fields($fields);
 
     foreach ($this->refs as $ref) {
+      $ref->elid = $this->elid;
       $query->values($ref->dumpProps());
     }
 
