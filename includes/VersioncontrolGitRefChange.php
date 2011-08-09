@@ -168,5 +168,16 @@ abstract class VersioncontrolGitRefChange {
     }
     return $return;
   }
+  
+  /**
+   *
+   * @return VersioncontrolRepository
+   */
+  public function getRepository() {
+    if (empty($this->repository) || !($this->repository instanceof VersioncontrolRepository)) {
+      return NULL;
+    }
+    return $this->repository;
+  }
 }
 

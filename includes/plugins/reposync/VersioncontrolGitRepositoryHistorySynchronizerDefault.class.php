@@ -34,8 +34,14 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return $branches;
   }
 
-  protected function fetchCommitsInDatabase() {
-    $commits = $this->repository->loadCommits(array(), array(), array('may cache' => FALSE));
+  protected function fetchCommitsInDatabase($label_id = 0) {
+    $conditions = array();
+    
+    if (!empty($branch_name)) {
+      $conditions['branches'] = $label_id;
+    }
+    
+    $commits = $this->repository->loadCommits(array(), $conditions, array('may cache' => FALSE));
 
     foreach ($commits as &$commit) {
       $commit = $commit->revision;
@@ -100,9 +106,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     // Insert new commits in the database.
     foreach (array_diff($this->repository->fetchCommits(), $this->fetchCommitsInDatabase()) as $hash) {
-      $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
-      $output = $this->execute($command);
-      $this->fullSyncParseCommits($output, $branches);
+      $this->fullSyncParseCommits($hash, $branches);
     }
 
     /**
@@ -140,7 +144,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $logs The output of 'git log' to parse
    * @param array $branch_label_list An associative list of branchname => VersioncontrolBranch
    */
-  protected function fullSyncParseCommits($logs, $branches) {
+  protected function fullSyncParseCommits($hash, $branches) {
+    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
+    $logs = $this->execute($command);
+      
     // Get commit hash (vcapi's "revision")
     $revision = trim(next($logs));
 
@@ -489,6 +496,15 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     return $this->fullSync();
   }
+  
+  protected function getCommitInterval($start, $end) {
+    $logs = $this->execute('log --format=format:%H $start..$end');
+    $commits = array();
+    while (($line = next($logs)) !== FALSE) {
+      $commits[] = trim($line);
+    }
+    return $commits;
+  }
 
   public function syncEvent(VersioncontrolEvent $event) {
     // Additional parameter check to the appropriate Git subclass of that
@@ -501,15 +517,97 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       watchdog($msg, $vars, WATCHDOG_ERROR);
       throw new Exception(strtr($msg, $vars), E_ERROR);
     }
+    
+    $branches = $this->repository->fetchBranches();
+    $tags = $this->repository->fetchTags();
 
-    return $this->fullSync();
+    foreach ($event as $ref) {
+      // 1. Process labels
 
-//     foreach ($event as $refupdate) {
-//       // do sync stuff, yarr
-
-//       $refupdate->syncLabel();
-//       $refupdate->update();
-//     }
+      $ref->syncLabel();
+      $label_db = $ref->getLabel();
+      
+      switch ($ref->reftype) {
+        case VERSIONCONTROL_OPERATION_BRANCH:
+          $label_repo = $branches[$ref->refname];
+          
+          break;
+        case VERSIONCONTROL_OPERATION_TAG:
+          $label_repo = $tags[$ref->refname];
+          
+          break;
+      }
+      
+      if ($ref->eventCreatedMe() && ($label = $label_repo)) {
+        $label->insert();
+      }
+      elseif ($ref->eventDeletedMe() && ($label = $label_db)) {
+        $label->delete();
+      }
+      elseif ($label = $label_repo) {
+        $label->update();
+      }
+      else {
+        // This shouldn't happen, but it never hurts to double-check.
+        continue;
+      }
+      
+      unset($label_db);
+      unset($label_repo);
+      
+      // 2. Process commits for branches
+      
+      if ($label->type == VERSIONCONTROL_OPERATION_BRANCH) {
+      
+        // 2.1. Add all commits that aren't currently in the branch
+        $commits = $this->getCommitInterval($ref->old_sha1, $ref->new_sha1);
+        $commits_db = $this->fetchCommitsInDatabase($label->label_id);
+        
+        // Get a list of all branches.
+        $branches = $this->fetchBranchesInDatabase();
+        
+        foreach(array_dif($commits, $commits_db) as $revision) {
+          $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
+          
+          if (empty($commit)) {
+            // Insert completly new commit object into database. 
+            $this->fullSyncParseCommits($revision, $branches);
+          }
+          else {
+            // Link existing commit object to branch.
+            $commit->labels[] = $label;
+            $commit->update();
+          }
+        }
+        
+        // 2.2. Remove all connections with commits that aren't in the branch
+        $commits_branch = $this->repository->fetchCommits($label->name);
+        
+        foreach(array_dif($commits_db, $commits_branch) as $revision) {
+          $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
+          
+          if (count($commit->labels) > 1) {
+            // There are other labels that contain this commit, just only remove the connection to the current label.
+            
+            foreach ($commit->labels as $key => $commit_label) {
+              if ($commit_label->label_id == $label->label_id) {
+                unset($commit->labels[$key]);
+              }
+            }
+            
+            $commit->update();
+          } else {
+            // Save to completly delete the commit from the database.
+            
+            $commit->delete();
+          }
+        }
+        
+        $ref->commits = serialize($commits);
+      }
+    }
+    
+    $event->update();
   }
 
   public function verifyData() {
