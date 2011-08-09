@@ -83,6 +83,17 @@ function versioncontrol_git_views_api() {
 }
 
 /**
+ * Implementation of hook_theme().
+ */
+function versioncontrol_git_theme($existing, $type, $theme, $path) {
+  return array(
+    'versioncontrol_git_event' => array(
+      'variables' => array('event' => NULL),
+    ),
+  );
+}
+
+/**
  * Get & verify the path to the git binary.
  *
  * @param bool $error
@@ -141,4 +152,87 @@ function versioncontrol_git_ctools_plugin_directory($module, $plugin) {
   if ($module == 'versioncontrol') {
     return "includes/plugins/$plugin";
   }
+}
+
+/**
+ * Implementation of hook token_list.
+ */
+function versioncontrol_git_token_list($type = 'all') {
+  $tokens = array();
+  
+  if (($type == 'VersioncontrolEvent') || ($type == 'all')) {
+    $tokens['Versioncontrol Git Event'] = array(
+      'event-git' => t('A list of reference changes this event introduced'),
+    );
+  }
+  
+  return $tokens;
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function versioncontrol_git_token_values($type, $object = NULL, $options = array()) {
+  $values = array();
+  
+  if (empty($object)) {
+    return $values;
+  }
+  
+  switch($type) {
+    case "VersioncontrolEvent":
+      $values = array(
+        'event-git' => theme('versioncontrol_git_event', $object),
+      );
+      
+  }
+  
+  return $values;
+}
+
+function theme_versioncontrol_git_event($event) {
+  $refs = array();
+  
+  $repo = $event->getRepository();
+  
+  foreach ($event as $ref) {
+    switch ($ref->reftype) {
+      case VERSIONCONTROL_OPERATION_BRANCH:
+        if ($ref->eventCreatedMe()) {
+          $refs[] = t('Branch !branch was created.', array('!branch' => $ref->refname));
+        }
+        elseif ($ref->eventDeletedMe()) {
+          $refs[] = t('Branch !branch was deleted.', array('!branch' => $ref->refname));
+        }
+        else {
+          $refs[] = t('Branch !branch was updated with the following commits:', array('!branch' => $ref->refname));
+          
+          $commits = array();
+          foreach ($ref->getIncludedCommits() as $commit) {
+            $revision = $repo->getBackend()->formatRevisionIdentifier($commit->revision);
+            $revision_link = $repo->getUrlHandler()->getCommitViewUrl($revision);
+            $revision = (!empty($revision_link) ? $revision_link : $revision);
+            
+            $message = $commit->message;
+            
+            $commits[] = t('!revision: !message', array('!revision' => $revision, '!message' => $message));
+          }
+          
+          $refs[] = $commits;
+        }
+        
+        break;
+      case VERSIONCONTROL_OPERATION_TAG:
+        if ($ref->eventCreatedMe()) {
+          $refs[] = t('Tag !tag was created.', array('!tag' => $ref->refname));
+        }
+        elseif ($ref->eventDeletedMe()) {
+          $refs[] = t('Tag !tag was deleted.', array('!tag' => $ref->refname));
+        }
+        
+        break;
+    }
+  }
+  
+  return theme('item_list', $refs);
 }

@@ -142,4 +142,5 @@ abstract class VersioncontrolGitTestCase extends VersioncontrolTestCase {
       $this->assertEqual($op_label_count, 45, t('Sync of test repository resulted in correct number of commit/label mappings.'));
     }
   }
+
 }

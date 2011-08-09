@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * @file
+ * Tests ensuring proper behavior of the integration with Token.
+ */
+
+require_once drupal_get_path('module', 'versioncontrol_git') . '/tests/VersioncontrolGitTestCase.test';
+
+class VersioncontrolGitTokenTests extends VersioncontrolGitTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => t('Git token integration tests'),
+      'description' => t('Tests on Token integration.'),
+      'group' => t('Version Control Git'),
+    );
+  }
+  
+  function testVersioncontrolEventTokens() {
+    $message = '[event-git]';
+    
+    $data = '0000000000000000000000000000000000000000 4b358832a38a65fe0b71f720a27bb10f7419e34b refs/heads/author-mapping'. PHP_EOL.
+            '0000000000000000000000000000000000000000 9f708590d85a6220b1d805d982969ae1f84e43c8 refs/heads/commits-and-activity'. PHP_EOL.
+            '0000000000000000000000000000000000000000 beee9bff13503e969fe44ffac082877f4ebd30e4 refs/heads/committer-author-uid-mappings'. PHP_EOL.
+            '0000000000000000000000000000000000000000 aef51a8f5dfdade28a5091412db4492c00f55b8b refs/heads/format-rev'. PHP_EOL.
+            '0000000000000000000000000000000000000000 0677916329d05c0096c13cd5133a1684e27de551 refs/heads/manual-log-fetch'. PHP_EOL.
+            '0000000000000000000000000000000000000000 ec9b81e4773cd6f5debcbaa2d8ce0c2d31d4fcf9 refs/heads/master'. PHP_EOL.
+            '0000000000000000000000000000000000000000 45a1f9f7a0d282e372d10c95a60efa965b0b77cb refs/heads/operation-to-commit'. PHP_EOL.
+            '0000000000000000000000000000000000000000 660e79769666067e506595e3d05bdbe5a142015a refs/heads/pluggable-auth'. PHP_EOL.
+            '0000000000000000000000000000000000000000 2c530e1f3476ee95001d1485f69a166e213d3f59 refs/heads/q-mod-callback'. PHP_EOL.
+            '0000000000000000000000000000000000000000 e76ad66dbb92ae39294271ee20c468fa3f3f1917 refs/heads/unified-crud'. PHP_EOL.
+            '0000000000000000000000000000000000000000 7dbb8bfb385e6b18fd324202f1b0f76f00f61a96 refs/heads/vcs_username'. PHP_EOL.
+            '0000000000000000000000000000000000000000 687f5b4b65111d25cdb45ac1562a7c900893a5fc refs/heads/viewsification'. PHP_EOL;
+
+    
+    $repo = $this->versioncontrolCreateRepoFromTestRepo();
+    
+    $data = array(
+      'repository' => $repo,
+      'uid' => 0,
+      'data' => $data,
+    );
+    
+    $object = $this->versioncontrolGenerateCodeArrivalEvent('git', $data);
+    
+    $actor = db_fetch_object(db_query("SELECT COUNT(elid) FROM {versioncontrol_event_log}"));
+    $this->pass(print_r($actor, TRUE));
+    
+    $expected = '';
+    
+    $render = token_replace_multiple($message, array('VersioncontrolEvent' => $object), '[', ']', array(), TRUE);
+    
+    $this->pass($render);
+    
+    $this->assertEqual($render, $expected);
+  }
+  
+}
