@@ -37,17 +37,18 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   protected function fetchCommitsInDatabase($label_id = 0) {
     $conditions = array();
     
-    if (!empty($branch_name)) {
+    if (!empty($label_id)) {
       $conditions['branches'] = $label_id;
     }
     
     $commits = $this->repository->loadCommits(array(), $conditions, array('may cache' => FALSE));
 
-    foreach ($commits as &$commit) {
-      $commit = $commit->revision;
+    $revisions = array();
+    foreach ($commits as $commit) {
+      $revisions[] = $commit->revision;
     }
 
-    return $commits;
+    return $revisions;
   }
 
   /**
@@ -581,7 +582,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $branches_db = $this->fetchBranchesInDatabase();
         
         foreach(array_diff($commits, $commits_db) as $revision) {
-          $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
+          $commit = reset($this->repository->loadCommits(array(), array('revision' => $revision)));
           
           if (empty($commit)) {
             // Insert completly new commit object into database. 
@@ -617,6 +618,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         }
         
         $ref->commits = $commits;
+        
       }
     }
     
