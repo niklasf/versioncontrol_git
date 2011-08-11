@@ -61,7 +61,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * FIXME while largely ported to the new entities system, this is still not 100%
    * done
    */
-  public function fullSync() {
+  public function syncFull() {
     $this->verify();
     $this->prepare();
 
@@ -106,7 +106,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     // Insert new commits in the database.
     foreach (array_diff($this->repository->fetchCommits(), $this->fetchCommitsInDatabase()) as $hash) {
-      $this->fullSyncParseCommits($hash, $branches);
+      $this->parseCommit($hash, $branches);
     }
 
     /**
@@ -125,7 +125,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $tags_new = array_diff_key($tags_in_repo, $tags_in_db_by_name);
     $tags_deleted = array_diff_key($tags_in_db_by_name, $tags_in_repo);
     if (!empty($tags_new)) {
-      $this->fullSyncProcessTags($tags_new);
+      $this->processTags($tags_new);
     }
     // Delete removed tags
     foreach($tags_deleted as $tag) {
@@ -144,7 +144,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $logs The output of 'git log' to parse
    * @param array $branch_label_list An associative list of branchname => VersioncontrolBranch
    */
-  protected function fullSyncParseCommits($hash, $branches) {
+  protected function parseCommit($hash, $branches) {
     $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
     $logs = $this->execute($command);
       
@@ -202,7 +202,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     $op = new VersioncontrolGitOperation($this->repository->getBackend());
     $op->build($op_data);
-    $op->labels = $this->fullSyncGetBranchesOfCommit($revision, $branches);
+    $op->labels = $this->getBranchesOfCommit($revision, $branches);
     $op->insert(array('map users' => TRUE));
 
     $item_action = $merge ? VERSIONCONTROL_ACTION_MERGED : VERSIONCONTROL_ACTION_MODIFIED;
@@ -219,7 +219,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     );
 
     // Parse in the raw data and create VersioncontrolGitItem objects.
-    $op_items = $this->fullSyncParseItems($logs, $line, $default_item_data, $parents);
+    $op_items = $this->parseItems($logs, $line, $default_item_data, $parents);
     $op->itemRevisions = $op_items;
     $op->save(array('nested' => TRUE));
   }
@@ -230,7 +230,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $branch_label_list
    * @return VersioncontrolBranch
    */
-  protected function fullSyncGetBranchesOfCommit($revision, $branch_label_list) {
+  protected function getBranchesOfCommit($revision, $branch_label_list) {
     $exec = 'branch --no-color --contains ' . escapeshellarg($revision);
     $logs = $this->execute($exec);
     $branches = array();
@@ -257,7 +257,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param bool $merge
    * @return array All items affected by a commit.
    */
-  protected function fullSyncParseItems(&$logs, &$line, $data, $parents) {
+  protected function parseItems(&$logs, &$line, $data, $parents) {
     $op_items = array();
 
     // Parse the diffstat for the changed files.
@@ -279,7 +279,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       // extract blob
       $command = 'ls-tree -r ' . escapeshellarg($data['revision']) . ' ' . escapeshellarg($matches[3]);
       $lstree_lines = $this->execute($command);
-      $blob_hash = $this->fullSyncParseItemBlob($lstree_lines);
+      $blob_hash = $this->parseItemBlob($lstree_lines);
       $op_items[$path]->blob_hash = $blob_hash;
     } while (($line = next($logs)) !== FALSE);
 
@@ -294,7 +294,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         // extract blob
         $command = 'ls-tree -r ' . escapeshellarg($data['revision']) . ' ' . escapeshellarg($matches[4]);
         $lstree_lines = $this->execute($command);
-        $blob_hash = $this->fullSyncParseItemBlob($lstree_lines);
+        $blob_hash = $this->parseItemBlob($lstree_lines);
         $op_items['/'. $matches[4]]->blob_hash = $blob_hash;
       }
       else if ($matches[1] == 'delete') {
@@ -306,7 +306,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     // Fill in the source_items for non-added items
     foreach ($op_items as $path => &$item) {
       if ($item->action != VERSIONCONTROL_ACTION_ADDED) {
-        $this->fullSyncFillSourceItem($item, $parents, $data);
+        $this->fillSourceItem($item, $parents, $data);
       }
     }
     return $op_items;
@@ -315,7 +315,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
  /**
    * Parse ls-tree with one commit hash and one item.
    */
-  protected function fullSyncParseItemBlob($lines) {
+  protected function parseItemBlob($lines) {
     $line = next($lines);
     // output: <mode> SP <type> SP <object> TAB <file>
     $info = explode("\t", $line);
@@ -337,7 +337,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $parents The parent commit(s)
    * @return none
    */
-  protected function fullSyncFillSourceItem(&$item, $parents, $inc_data) {
+  protected function fillSourceItem(&$item, $parents, $inc_data) {
     $data = array(
       'type' => VERSIONCONTROL_ITEM_FILE,
       'repository' => $inc_data['repository'],
@@ -367,13 +367,13 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $tags_new All new tags.
    * @return none
    */
-  function fullSyncProcessTags($tags_new) {
+  function processTags($tags_new) {
     if (empty($tags_new)) {
       return;
     }
 
     // get a list of all tag names with the corresponding commit.
-    $tag_commit_list = $this->fullSyncGetTagCommitList($tags_new);
+    $tag_commit_list = $this->getTagCommitList($tags_new);
     $format = '%(objecttype)%0a%(objectname)%0a%(refname)%0a%(taggername) %(taggeremail)%0a%(taggerdate)%0a%(contents)ENDOFGITTAGOUTPUTMESAGEHERE';
     foreach($tag_commit_list as $tag_name => $tag_commit) {
       $exec = "for-each-ref --format=\"$format\" refs/tags/" . escapeshellarg($tag_name);
@@ -429,11 +429,11 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $tags An array of tag names
    * @return array A list of all tags with the respective tagged commit.
    */
-  function fullSyncGetTagCommitList($tags) {
+  function getTagCommitList($tags) {
     if(empty($tags)) {
       return array();
     }
-    $tag_string = $this->fullSyncGetTagString($tags);
+    $tag_string = $this->getTagString($tags);
     $exec = "show-ref -d $tag_string";
     $tag_commit_list_raw = $this->execute($exec);
     $tag_commit_list = array();
@@ -470,7 +470,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $tags
    * @return string
    */
-  function fullSyncGetTagString($tags) {
+  function getTagString($tags) {
     $tag_string = '';
     // $tag_string is a list of fully qualified tag names
     foreach ($tags as $tag) {
@@ -493,10 +493,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return $output;
   }
 
-  public function initialSync() {
+  public function syncInitial() {
     // TODO halstead's optimized fast-export-based parser goes here. But for now, just use the same old crap
 
-    return $this->fullSync();
+    return $this->syncFull();
   }
   
   protected function getCommitInterval($start, $end) {
@@ -585,7 +585,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
           
           if (empty($commit)) {
             // Insert completly new commit object into database. 
-            $this->fullSyncParseCommits($revision, $branches_db);
+            $this->parseCommit($revision, $branches_db);
           }
           else {
             // Link existing commit object to branch.

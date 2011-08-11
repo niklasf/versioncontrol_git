@@ -129,7 +129,7 @@ abstract class VersioncontrolGitTestCase extends VersioncontrolTestCase {
    */
   public function versioncontrolSyncTestRepository(VersioncontrolGitRepository $repository) {
     $sync = $repository->getSynchronizer();
-    $synced = $sync->initialSync();
+    $synced = $sync->syncInitial();
 
     if (!$this->testRepoChecked) {
       // It's pointless to run these checks more than once.
