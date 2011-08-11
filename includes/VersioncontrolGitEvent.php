@@ -34,6 +34,8 @@ class VersioncontrolGitEvent extends VersioncontrolEvent implements IteratorAggr
 
     $refs = array();
     foreach ($this->refs as $ref) {
+      $ref['repository'] = $this->getRepository();
+      
       if ($ref['reftype'] == VERSIONCONTROL_LABEL_BRANCH) {
         $refs[$ref['refname']] = new VersioncontrolGitBranchChange($ref);
       }

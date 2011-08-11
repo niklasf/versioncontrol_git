@@ -240,7 +240,9 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       if($line[0] == '*') {
         $line = substr($line, 2);
       }
-      $branches[] = $branch_label_list[$line];
+      if (!empty($branch_label_list[$line])) {
+        $branches[] = $branch_label_list[$line];
+      }
     }
 
     return $branches;
@@ -498,7 +500,19 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   }
   
   protected function getCommitInterval($start, $end) {
-    $logs = $this->execute('log --format=format:%H $start..$end');
+    if ($start == GIT_NULL_REV) {
+      $range = $end;
+    }
+    elseif ($end == GIT_NULL_REV) {
+      $range = "$start..";
+    }
+    else {
+      $range = "$start..$end";
+    }
+    
+    $command = "log --format=format:%H $range";
+    $logs = $this->execute($command);
+    
     $commits = array();
     while (($line = next($logs)) !== FALSE) {
       $commits[] = trim($line);
@@ -544,7 +558,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       elseif ($ref->eventDeletedMe() && ($label = $label_db)) {
         $label->delete();
       }
-      elseif ($label = $label_repo) {
+      elseif ($label = $label_db) {
         $label->update();
       }
       else {
@@ -564,14 +578,14 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $commits_db = $this->fetchCommitsInDatabase($label->label_id);
         
         // Get a list of all branches.
-        $branches = $this->fetchBranchesInDatabase();
+        $branches_db = $this->fetchBranchesInDatabase();
         
-        foreach(array_dif($commits, $commits_db) as $revision) {
+        foreach(array_diff($commits, $commits_db) as $revision) {
           $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
           
           if (empty($commit)) {
             // Insert completly new commit object into database. 
-            $this->fullSyncParseCommits($revision, $branches);
+            $this->fullSyncParseCommits($revision, $branches_db);
           }
           else {
             // Link existing commit object to branch.
@@ -583,7 +597,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         // 2.2. Remove all connections with commits that aren't in the branch
         $commits_branch = $this->repository->fetchCommits($label->name);
         
-        foreach(array_dif($commits_db, $commits_branch) as $revision) {
+        foreach(array_diff($commits_db, $commits_branch) as $revision) {
           $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
           
           if (count($commit->labels) > 1) {
@@ -596,7 +610,8 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
             }
             
             $commit->update();
-          } else {
+          } 
+          else {
             // Save to completly delete the commit from the database.
             
             $commit->delete();
