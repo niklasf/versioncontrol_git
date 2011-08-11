@@ -19,6 +19,8 @@ class VersioncontrolGitEventController extends VersioncontrolEventController {
         $queried_entities[$row->elid]->refs = array();
       }
       // TODO we build with objects here but assoc arrays in VersioncontrolGitBackend, that's sloppy
+      $row['commits'] = unserialize($row['commits']);
+      
       $queried_entities[$row->elid]->refs[] = $row;
     }
   }

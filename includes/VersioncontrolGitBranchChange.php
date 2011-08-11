@@ -2,13 +2,6 @@
 
 class VersioncontrolGitBranchChange extends VersioncontrolGitRefChange {
 
-  /**
-  * Indicates whether or not the branch update was a fast-forward.
-  *
-  * @var bool
-  */
-  public $ff;
-
   public function __construct($data) {
     parent::__construct($data);
   }

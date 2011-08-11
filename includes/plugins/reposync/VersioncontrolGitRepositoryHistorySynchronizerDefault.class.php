@@ -598,11 +598,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $commits_branch = $this->repository->fetchCommits($label->name);
         
         foreach(array_diff($commits_db, $commits_branch) as $revision) {
-          $commit = $this->repository->loadCommits(array(), array('revision' => $revision));
+          $commit = reset($this->repository->loadCommits(array(), array('revision' => $revision)));
           
           if (count($commit->labels) > 1) {
             // There are other labels that contain this commit, just only remove the connection to the current label.
-            
             foreach ($commit->labels as $key => $commit_label) {
               if ($commit_label->label_id == $label->label_id) {
                 unset($commit->labels[$key]);
@@ -612,13 +611,12 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
             $commit->update();
           } 
           else {
-            // Save to completly delete the commit from the database.
-            
+            // It's save to completly delete the commit from the database.
             $commit->delete();
           }
         }
         
-        $ref->commits = serialize($commits);
+        $ref->commits = $commits;
       }
     }
     

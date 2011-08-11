@@ -14,6 +14,11 @@ abstract class VersioncontrolGitRefChange {
    */
   protected $repository;
 
+  /**
+   * The event id of the associated VersioncontrolGitEvent.
+   *
+   * @var int
+   */
   public $elid;
 
   /**
@@ -61,6 +66,14 @@ abstract class VersioncontrolGitRefChange {
    * @var string
    */
   public $new_sha1;
+  
+ /**
+  * Only valid for branches. Indicates whether or not the branch update 
+  * was a fast-forward.
+  *
+  * @var bool
+  */
+  public $ff = NULL;
 
   /**
    * Only valid for branches. Contains the list of new commit objects
@@ -71,7 +84,7 @@ abstract class VersioncontrolGitRefChange {
    *
    * @var serialized array
    */
-  public $commits;
+  public $commits = array();
 
   public function __construct($data) {
     foreach ($data as $key => $val) {
@@ -164,7 +177,7 @@ abstract class VersioncontrolGitRefChange {
       if (in_array($prop->name, array('repository'))) {
         continue;
       }
-      $return[$prop->name] = $this->{$prop->name};
+      $return[$prop->name] = (is_array($this->{$prop->name}) || is_object($this->{$prop->name}) ? serialize($this->{$prop->name}) : $this->{$prop->name});
     }
     return $return;
   }

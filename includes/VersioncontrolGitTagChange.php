@@ -5,8 +5,7 @@ class VersioncontrolGitTagChange extends VersioncontrolGitRefChange {
   public function __construct($data) {
     parent::__construct($data);
     $this->commits = array();
-    // Just ensure we don't have anything for ff
-    unset($this->ff);
+    $this->ff = NULL;
   }
 
   public function getLabel() {
