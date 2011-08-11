@@ -142,5 +142,33 @@ abstract class VersioncontrolGitTestCase extends VersioncontrolTestCase {
       $this->assertEqual($op_label_count, 45, t('Sync of test repository resulted in correct number of commit/label mappings.'));
     }
   }
+  
+  /**
+   * Simulates a git push given a blob containing the arguments passed to the
+   * git pre-update hook.
+   *
+   * @param string $blob
+   *    A string containing the arguments passed to the git pre-update hook.
+   *    One refchange per line, arguments seperated by a space.
+   *
+   * @param array $data
+   *   An optional array of data to be passed to the entity builder for the
+   *   event.
+   *
+   * @return VersioncontrolGitEvent
+   */
+  protected function versioncontrolSimulatePush($blob, $data = array()) {
+    $data += array(
+      'repository' => NULL,
+      'uid' => 0,
+      'data' => $blob,
+    );
+    
+    if (empty($data['repository'])) {
+      $data['repository'] = $this->versioncontrolCreateRepoFromTestRepo();
+    }
+    
+    return $this->versioncontrolGenerateCodeArrivalEvent('git', $data);
+  }
 
 }

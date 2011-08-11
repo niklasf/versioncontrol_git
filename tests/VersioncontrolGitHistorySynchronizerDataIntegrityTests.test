@@ -29,24 +29,14 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
     
     $this->repo = $this->versioncontrolCreateRepoFromTestRepo(array(), FALSE);
   }
-  
-  protected function versioncontrolSimulatePush($data) {
-    $data = array(
-      'repository' => $this->repo,
-      'uid' => 0,
-      'data' => $data,
-    );
-    
-    $this->versioncontrolGenerateCodeArrivalEvent('git', $data);
-  }
-  
+
   /**
    * Introduce a new branch with one commit.
    */
   public function testIntroduceBranch() {
     // Simulate push containing new branch with one commit.
     $data = '0000000000000000000000000000000000000000 4817efad5041c7ce8de84fb1013d859eec5231d6 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $branch = reset($branches);
@@ -67,11 +57,11 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
   public function testUpdateBranch() {
     // Simulate push containing new branch with one commit.
     $data = '0000000000000000000000000000000000000000 4817efad5041c7ce8de84fb1013d859eec5231d6 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     // Simulate push containing update to existing branch and 15 additional commits.
     $data = '4817efad5041c7ce8de84fb1013d859eec5231d6 0f0280aefe4d0c3384cb04a0bbb15c9543f46a69 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $branch = reset($branches);
@@ -90,7 +80,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
   public function testDeleteBranch() {
     // Simulate push containing new branch with one commit.
     $data = '0000000000000000000000000000000000000000 4817efad5041c7ce8de84fb1013d859eec5231d6 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $branch = reset($branches);
@@ -106,7 +96,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
     
     // Simulate push that deletes the only existing branch.
     $data = '4817efad5041c7ce8de84fb1013d859eec5231d6 0000000000000000000000000000000000000000 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $this->assertTrue(empty($branches), t('There are no more branches left in the database.'));
@@ -119,7 +109,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
   public function testBranchOffAndDelete() {
     // Simulate push containing new branch with 9 commits.
     $data = '0000000000000000000000000000000000000000 7d5e9ebb5f647f8097323468c671176c154e2f5e refs/heads/enhancements'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $branch = reset($branches);
@@ -135,7 +125,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
     // that contains some commits that were in the previous push.
     $data = '7d5e9ebb5f647f8097323468c671176c154e2f5e 28e2c35b6f7626d662ffda2c344a782e639f76e7 refs/heads/enhancements'. PHP_EOL .
             '0000000000000000000000000000000000000000 06ed7cc29f4afd3473b3905cc8dce6471b963e5a refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     
@@ -154,7 +144,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
     // Simulate push that deletes the first branch and brings the second branch forward.
     $data = '28e2c35b6f7626d662ffda2c344a782e639f76e7 0000000000000000000000000000000000000000 refs/heads/enhancements'. PHP_EOL .
             '06ed7cc29f4afd3473b3905cc8dce6471b963e5a 0f0280aefe4d0c3384cb04a0bbb15c9543f46a69 refs/heads/master'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
             
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $branch = reset($branches);
@@ -169,7 +159,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
   public function testIntroduceTag() {
     // Simulate a push that contains a new tag.
     $data = '0000000000000000000000000000000000000000 b1e97e0f979c5e3580942b335e85bf17c3216397 refs/tags/annotated'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $this->assertTrue((count($branches) == 0), t('There are no branches in the database.'));
@@ -187,7 +177,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
   public function testDeleteTag() {
     // Simulate a push that contains a new tag.
     $data = '0000000000000000000000000000000000000000 b1e97e0f979c5e3580942b335e85bf17c3216397 refs/tags/annotated'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $this->assertTrue((count($branches) == 0), t('There are no branches in the database.'));
@@ -200,7 +190,7 @@ class VersioncontrolGitEventDataIntegrityTests extends VersioncontrolGitTestCase
     
     // Simulate a push that deletes the previous tag.
     $data = 'b1e97e0f979c5e3580942b335e85bf17c3216397 0000000000000000000000000000000000000000 refs/tags/annotated'. PHP_EOL;
-    $this->versioncontrolSimulatePush($data);
+    $this->versioncontrolSimulatePush($data, array('repository' => $this->repo));
     
     $branches = $this->repo->loadBranches(array(), array(), array('may cache' => FALSE));
     $this->assertTrue((count($branches) == 0), t('There are no branches in the database.'));
