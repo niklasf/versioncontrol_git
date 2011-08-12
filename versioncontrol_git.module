@@ -89,6 +89,11 @@ function versioncontrol_git_theme($existing, $type, $theme, $path) {
   return array(
     'versioncontrol_git_event' => array(
       'variables' => array('event' => NULL),
+      'file' => 'versioncontrol_git.theme.inc',
+    ),
+    'versioncontrol_git_operation' => array(
+      'variables' => array('operation' => NULL),
+      'file' => 'versioncontrol_git.theme.inc',
     ),
   );
 }
@@ -188,51 +193,4 @@ function versioncontrol_git_token_values($type, $object = NULL, $options = array
   }
   
   return $values;
-}
-
-function theme_versioncontrol_git_event($event) {
-  $refs = array();
-  
-  $repo = $event->getRepository();
-  
-  foreach ($event as $ref) {
-    switch ($ref->reftype) {
-      case VERSIONCONTROL_OPERATION_BRANCH:
-        if ($ref->eventCreatedMe()) {
-          $refs[] = t('Branch !branch was created.', array('!branch' => $ref->refname));
-        }
-        elseif ($ref->eventDeletedMe()) {
-          $refs[] = t('Branch !branch was deleted.', array('!branch' => $ref->refname));
-        }
-        else {
-          $refs[] = t('Branch !branch was updated with the following commits:', array('!branch' => $ref->refname));
-          
-          $commits = array();
-          foreach ($ref->getIncludedCommits() as $commit) {
-            $revision = $repo->getBackend()->formatRevisionIdentifier($commit->revision);
-            $revision_link = $repo->getUrlHandler()->getCommitViewUrl($revision);
-            $revision = (!empty($revision_link) ? $revision_link : $revision);
-            
-            $message = $commit->message;
-            
-            $commits[] = t('!revision: !message', array('!revision' => $revision, '!message' => $message));
-          }
-          
-          $refs[] = $commits;
-        }
-        
-        break;
-      case VERSIONCONTROL_OPERATION_TAG:
-        if ($ref->eventCreatedMe()) {
-          $refs[] = t('Tag !tag was created.', array('!tag' => $ref->refname));
-        }
-        elseif ($ref->eventDeletedMe()) {
-          $refs[] = t('Tag !tag was deleted.', array('!tag' => $ref->refname));
-        }
-        
-        break;
-    }
-  }
-  
-  return theme('item_list', $refs);
 }
