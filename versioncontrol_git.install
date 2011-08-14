@@ -346,3 +346,54 @@ function versioncontrol_git_update_6204() {
   db_add_field($ret, 'versioncontrol_git_event_data', 'ff', $spec);
   return $ret;
 }
+
+/**
+ * Migrate the git push log data from the drupalorg modules, if they are present.
+ */
+function versioncontrol_git_update_6205(&$sandbox) {
+  $ret = array();
+  $ret['#finished'] = 1;
+  
+  if (module_exists('drupalorg_git_gateway')) {
+    if (!isset($sandbox['current'])) {
+      $sandbox['current'] = 0;
+      $sandbox['max'] = db_result(db_query('SELECT COUNT(*) FROM {drupalorg_git_push_log} WHERE repo_id IN (SELECT repo_id FROM {versioncontrol_repositories})')) - 1;
+      $sandbox['limit'] = $sandbox['max'] / 100;
+      
+      db_query('TRUNCATE {versioncontrol_event_log};');
+      db_query('TRUNCATE {versioncontrol_git_event_data};');
+    }
+
+    $backend = versioncontrol_get_backends('git');
+
+    $events_query = db_query_range('SELECT push_id, uid, timestamp, repo_id FROM {drupalorg_git_push_log} WHERE repo_id IN (SELECT repo_id FROM {versioncontrol_repositories})', $sandbox['current'], $sandbox['limit']);
+    
+    while ($obj = db_fetch_object($events_query)) {
+      $push_id = $obj->push_id;
+      unset($obj->push_id);
+
+      if ($repo = $backend->loadEntity('repo', array($obj->repo_id))) {
+        $refs = array();
+        $refs_query = db_query('SELECT reftype, refname, 0 AS label_id, old_obj AS old_sha1, new_obj AS new_sha1 FROM {drupalorg_git_push_log_refs} WHERE push_id = %d', $push_id);
+        while ($ref = db_fetch_array($refs_query)) {
+          $refs[] = $ref;
+        }
+        
+        $obj->refs = $refs;
+        
+        $event = $repo->getBackend()->buildEntity('event', $obj);
+        
+        $event->insert();
+
+        $sync = $repo->getSynchronizer();
+        $sync->syncEvent($event);
+      }
+      
+      $sandbox['current'] ++;
+    }
+    
+    $ret['#finished'] = (empty($sandbox['max']) ? 1 : ($sandbox['current'] / $sandbox['max']));
+  }
+  
+  return $ret;
+}
