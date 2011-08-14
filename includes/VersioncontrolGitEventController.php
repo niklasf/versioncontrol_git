@@ -14,14 +14,14 @@ class VersioncontrolGitEventController extends VersioncontrolEventController {
       ->condition('vged.elid', $elids)
       ->execute();
 
-    foreach ($result as $row) {
-      if (!isset($queried_entities[$row->elid]->refs)) {
-        $queried_entities[$row->elid]->refs = array();
+		while ($row = $result->fetchAssoc) {
+      if (!isset($queried_entities[$row['elid']]->refs)) {
+        $queried_entities[$row['elid']]->refs = array();
       }
-      // TODO we build with objects here but assoc arrays in VersioncontrolGitBackend, that's sloppy
+			
       $row['commits'] = unserialize($row['commits']);
       
-      $queried_entities[$row->elid]->refs[] = $row;
+      $queried_entities[$row['elid']]->refs[] = $row;
     }
   }
 }
