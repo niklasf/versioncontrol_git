@@ -16,10 +16,12 @@ class VersioncontrolGitTagChange extends VersioncontrolGitRefChange {
   }
   
   public function syncLabel() {
-    $tags = $this->repository->loadTags(array(), array('name' => $this->refname));
-    if (!empty($tags)) {
-      $tag = reset($tags);
-      $this->label_id = $tag->label_id;
+    if (!empty($this->refname)) {
+      $tags = $this->repository->loadTags(array(), array('name' => $this->refname));
+      if (!empty($tags)) {
+        $tag = reset($tags);
+        $this->label_id = $tag->label_id;
+      }
     }
   }
 }

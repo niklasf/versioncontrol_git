@@ -14,10 +14,12 @@ class VersioncontrolGitBranchChange extends VersioncontrolGitRefChange {
   }
 
   public function syncLabel() {
-    $branches = $this->repository->loadBranches(array(), array('name' => $this->refname));
-    if (!empty($branches)) {
-      $branch = reset($branches);
-      $this->label_id = $branch->label_id;
+    if (!empty($this->refname)) {
+      $branches = $this->repository->loadBranches(array(), array('name' => $this->refname));
+      if (!empty($branches)) {
+        $branch = reset($branches);
+        $this->label_id = $branch->label_id;
+      }
     }
   }
 
