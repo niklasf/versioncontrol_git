@@ -363,7 +363,8 @@ function versioncontrol_git_update_6205(&$sandbox) {
     if (!isset($sandbox['current'])) {
       $sandbox['current'] = 0;
       $sandbox['max'] = db_result(db_query('SELECT COUNT(*) FROM {drupalorg_git_push_log} WHERE repo_id IN (SELECT repo_id FROM {versioncontrol_repositories})')) - 1;
-      $sandbox['limit'] = ($sandbox['max'] > 200 ? $sandbox['max'] / 100 : $sandbox['max']);
+      // $sandbox['limit'] = ($sandbox['max'] > 200 ? $sandbox['max'] / 100 : $sandbox['max']);
+      $sandbox['limit'] = 300;
       
       db_query('TRUNCATE {versioncontrol_event_log};');
       db_query('TRUNCATE {versioncontrol_git_event_data};');
