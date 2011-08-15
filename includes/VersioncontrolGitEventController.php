@@ -14,7 +14,9 @@ class VersioncontrolGitEventController extends VersioncontrolEventController {
       ->condition('vged.elid', $elids)
       ->execute();
 
-		while ($row = $result->fetchAssoc) {
+		foreach ($result as $row) {
+			$row = (array) $row;
+			
       if (!isset($queried_entities[$row['elid']]->refs)) {
         $queried_entities[$row['elid']]->refs = array();
       }

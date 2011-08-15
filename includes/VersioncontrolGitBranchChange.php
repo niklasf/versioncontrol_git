@@ -33,7 +33,11 @@ class VersioncontrolGitBranchChange extends VersioncontrolGitRefChange {
    *   An array of VersioncontrolGitOperation objects.
    */
   public function getIncludedCommits($options = array()) {
-    return $this->repository->loadCommits(array(), array('revision' => $this->commits), $options);
+    if (!empty($this->commits)) {
+      return $this->repository->loadCommits(array(), array('revision' => $this->commits), $options);
+    } else {
+      return array();
+    }
   }
 }
 
