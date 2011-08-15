@@ -30,18 +30,26 @@
         else {
           $ref = array();
           
+          $commits = $event_ref->getIncludedCommits();
+          
           if ($event_ref->eventCreatedMe()) {
-            $ref['data'] = t('Branch !branch was created, it contains the following commits:', array('!branch' => $event_ref->refname));
+            if (empty($commits)) {
+              $ref['data'] = t('Branch !branch was created.', array('!branch' => $event_ref->refname));
+            }
+            else {
+              $ref['data'] = t('Branch !branch was created, it contains the following commits:', array('!branch' => $event_ref->refname));
+            }
           }
           else {
             $ref['data'] = t('Branch !branch was updated with the following commits:', array('!branch' => $event_ref->refname));
           }
           
-          $ref['children'] = array();
-          
-          $commits = $event_ref->getIncludedCommits();
-          foreach ($commits as $commit) {
-            $ref['children'][] = theme('versioncontrol_git_operation', $commit);
+          if (!empty($commits)) {
+            $ref['children'] = array();
+            
+            foreach ($commits as $commit) {
+              $ref['children'][] = theme('versioncontrol_git_operation', $commit);
+            }
           }
           
           $refs[] = $ref;
