@@ -555,10 +555,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
           break;
       }
       
-      if ($ref->eventCreatedMe() && ($label = $label_repo)) {
+      if ($ref->eventCreatedMe() && empty($label_db) && ($label = $label_repo)) {
         $label->insert();
       }
-      elseif ($ref->eventDeletedMe() && ($label = $label_db)) {
+      elseif ($ref->eventDeletedMe() && empty($label_repo) && ($label = $label_db)) {
         $label->delete();
       }
       elseif ($label = $label_db) {
