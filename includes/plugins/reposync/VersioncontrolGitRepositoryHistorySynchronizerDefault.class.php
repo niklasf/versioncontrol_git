@@ -516,7 +516,9 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     
     $commits = array();
     while (($line = next($logs)) !== FALSE) {
-      $commits[] = trim($line);
+      if (($line = trim($line)) && (strlen($line) == 40)) {
+        $commits[] = $line;
+      }
     }
     return $commits;
   }
@@ -580,6 +582,11 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $commits = $this->getCommitInterval($ref->old_sha1, $ref->new_sha1);
         $commits_db = $this->fetchCommitsInDatabase($label->label_id);
         
+        // Don't even think about parsing when there are more than five commits.
+        if (count($commits) > 5) {
+          continue;
+        }
+        
         // Get a list of all branches.
         $branches_db = $this->fetchBranchesInDatabase();
         
@@ -592,6 +599,12 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
           }
           else {
             // Link existing commit object to branch.
+            foreach ($commit->labels as $key => $commit_label) {
+              if ($commit_label->label_id == $label->label_id) {
+                unset($commit->labels[$key]);
+              }
+            }
+            
             $commit->labels[] = $label;
             $commit->update();
           }
@@ -622,6 +635,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $ref->commits = $commits;
         
       }
+      
     }
     
     $event->update();
