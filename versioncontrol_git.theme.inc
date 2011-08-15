@@ -41,7 +41,12 @@
             }
           }
           else {
-            $ref['data'] = t('Branch !branch was updated with the following commits:', array('!branch' => $event_ref->refname));
+            if (empty($commits)) {
+              $ref['data'] = t('Branch !branch was updated.', array('!branch' => $event_ref->refname));
+            }
+            else {
+              $ref['data'] = t('Branch !branch was updated with the following commits:', array('!branch' => $event_ref->refname));
+            }
           }
           
           if (!empty($commits)) {
@@ -84,5 +89,5 @@ function theme_versioncontrol_git_operation($operation) {
   $revision_link = $operation->getRepository()->getUrlHandler()->getCommitViewUrl($revision);
   $revision = (!empty($revision_link) ? $revision_link : $revision);
   
-  return t('!revision: !message', array('!revision' => $revision, '!message' => $operation->message));
+  return t('!revision: !message', array('!revision' => $revision, '!message' => check_plain(truncate_utf8($operation->message, 100, FALSE, TRUE))));
 }
