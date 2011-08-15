@@ -307,7 +307,8 @@ function versioncontrol_git_update_6203() {
       ),
       'commits' => array(
         'description' => 'For incremental branch updates (i.e., excluding branch creation and deletion), a serialized list of all the commits contained in the push.',
-        'type' => 'text',
+        'type' => 'blob',
+        'size' => 'big',
         'not null' => FALSE,
       ),
     ),
@@ -354,6 +355,10 @@ function versioncontrol_git_update_6205(&$sandbox) {
   $ret = array();
   $ret['#finished'] = 1;
   
+  if (!isset($sandbox['current'])) {
+    db_change_field($ret, 'versioncontrol_git_event_data', 'commits', 'commits', array('type' => 'blob', 'size' => 'big', 'not null' => FALSE));
+  }
+  
   if (module_exists('drupalorg_git_gateway')) {
     if (!isset($sandbox['current'])) {
       $sandbox['current'] = 0;
@@ -374,7 +379,7 @@ function versioncontrol_git_update_6205(&$sandbox) {
 
       if ($repo = $backend->loadEntity('repo', array($obj->repo_id))) {
         $refs = array();
-        $refs_query = db_query('SELECT reftype, refname, 0 AS label_id, old_obj AS old_sha1, new_obj AS new_sha1 FROM {drupalorg_git_push_log_refs} WHERE push_id = %d', $push_id);
+        $refs_query = db_query('SELECT reftype, refname, old_obj AS old_sha1, new_obj AS new_sha1 FROM {drupalorg_git_push_log_refs} WHERE push_id = %d', $push_id);
         while ($ref = db_fetch_array($refs_query)) {
           if ($ref['reftype'] == 1) {
             $ref['reftype'] = VERSIONCONTROL_OPERATION_BRANCH;
@@ -383,6 +388,7 @@ function versioncontrol_git_update_6205(&$sandbox) {
             $ref['reftype'] = VERSIONCONTROL_OPERATION_TAG;
           }
 
+          $ref['label_id'] = 0;
           
           $refs[] = $ref;
         }
