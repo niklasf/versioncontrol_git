@@ -522,6 +522,8 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
   }
 
   public function syncEvent(VersioncontrolEvent $event) {
+    $this->prepare();
+    
     // Additional parameter check to the appropriate Git subclass of that
     // required by the interface itself.
     if (!$event instanceof VersioncontrolGitEvent) {
@@ -623,6 +625,8 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     }
     
     $event->update();
+    
+    $this->finalize();
   }
 
   public function verifyData() {
