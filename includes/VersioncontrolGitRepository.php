@@ -161,7 +161,7 @@ class VersioncontrolGitRepository extends VersioncontrolRepository {
    *  Logged output from the command; an array of either strings or file
    *  pointers.
    */
-  protected function exec($command) {
+  public function exec($command) {
     if (!$this->envSet) {
       $this->setEnv();
     }
