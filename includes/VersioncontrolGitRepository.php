@@ -3,6 +3,34 @@
 class VersioncontrolGitRepository extends VersioncontrolRepository {
 
   /**
+   * The branch name of the default (HEAD) branch or empty if this information
+   * is not available.
+   */
+  public $default_branch;
+
+  protected function backendDelete($options) {
+    db_delete('versioncontrol_git_repositories')
+      ->condition('repo_id', $this->repo_id)
+      ->execute();
+  }
+
+  protected function backendUpdate($options) {
+    db_update('versioncontrol_git_repositories')
+      ->condition('repo_id', $this->repo_id)
+      ->fields(array('default_branch' => $this->default_branch))
+      ->execute();
+  }
+
+  protected function backendInsert($options) {
+    db_insert('versioncontrol_git_repositories')
+      ->fields(array(
+        'repo_id' => $this->repo_id,
+        'default_branch' => $this->default_branch,
+      ))
+      ->execute();
+  }
+
+  /**
    * State flag indicating whether or not the GIT_DIR variable has been pushed
    * into the environment.
    *
