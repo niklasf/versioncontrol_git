@@ -41,6 +41,14 @@ interface VersioncontrolGitRepositoryManagerWorkerInterface extends Versioncontr
   public function setDescription($description);
 
   /**
+   * Switches the default (HEAD) branch to the given one.
+   *
+   * @param $branch_name
+   *   The name of the branch as under refs/heads, i.e. master.
+   */
+  public function setDefaultBranch($branch_name);
+
+  /**
    * Relocate the repository on disk to the new target location, then optionally
    * update the repository record in the database.
    */

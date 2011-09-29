@@ -91,6 +91,11 @@ class VersioncontrolGitRepositoryManagerWorkerDefault implements VersioncontrolG
     return TRUE;
   }
 
+  public function setDefaultBranch($branch_name) {
+    $this->passthru('symbolic-ref --quiet HEAD ' . escapeshellarg('refs/heads/' . $branch_name), TRUE);
+    $this->repository->default_branch = $branch_name;
+  }
+
   public function passthru($command, $exception = FALSE) {
     $command = escapeshellcmd(_versioncontrol_git_get_binary_path() . ' ' . $command);
 
