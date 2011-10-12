@@ -96,6 +96,58 @@ class VersioncontrolGitRepositoryManagerWorkerDefault implements VersioncontrolG
     $this->repository->default_branch = $branch_name;
   }
 
+  public function fetchDefaultBranch() {
+    // Prepare the git name-rev command to get the branch referenced by HEAD.
+    $command = escapeshellcmd(_versioncontrol_git_get_binary_path() . ' symbolic-ref --quiet HEAD');
+
+    // Execute it in the git repository using proc_open.
+    $descriptor_spec = array(
+      1 => array('pipe', 'w'),
+      2 => array('pipe', 'w'),
+    );
+    $env = array(
+      'GIT_DIR' => $this->repository->root,
+    );
+    $process = proc_open($command, $descriptor_spec, $pipes, $this->repository->root, $env);
+    if (!is_resource($process)) {
+      $vars = array('%root' => $this->repository->root);
+      watchdog('versioncontrol', 'Failed to execute git symbolic-ref in %root.', $vars, WATCHDOG_ERROR);
+      throw new Exception(t('Failed to execute git symbolic-ref in %root.', $vars));
+    }
+
+    // Read from the output streams and close them.
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+
+    // The exit code must be 0.
+    if ($ret = proc_close($process)) {
+      $vars = array(
+        '%root' => $this->repository->root,
+        '%ret' => $ret,
+        '%stdout' => $stdout,
+        '%stderr' => $stderr,
+      );
+      watchdog('versioncontrol', "git symbolic-ref exited with return code %ret in %root, emitting stdout:\n%stdout\n\nand stderr:\n%stderr", $vars, WATCHDOG_ERROR);
+      throw new Exception(t('git-symbolic-ref exited with return code %ret in %root.', array_slice($vars, 0, 2)));
+    }
+
+    // Stdout should be refs/heads/<branchname>.
+    if (!preg_match('/^refs\/heads\/(.*)$/', $stdout, $match)) {
+      $vars = array(
+        '%root' => $this->repository->root,
+        '%stdout' => $stdout,
+      );
+      watchdog('versioncontrol', 'Output of git-symbolic ref HEAD in %root was %stdout, which is not under refs/heads/.', $vars, WATCHDOG_ERROR);
+      throw new Exception(t('Output of git-symbolic ref HEAD in %root was %stdout, which is not under refs/heads/.', $vars));
+    }
+
+    // Set it on the repository object and return it.
+    $this->repository->default_branch = $match[1];
+    return $this->repository->default_branch;
+  }
+
   public function passthru($command, $exception = FALSE) {
     $command = escapeshellcmd(_versioncontrol_git_get_binary_path() . ' ' . $command);
 

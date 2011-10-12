@@ -49,6 +49,14 @@ interface VersioncontrolGitRepositoryManagerWorkerInterface extends Versioncontr
   public function setDefaultBranch($branch_name);
 
   /**
+   * Reads the default branch from the Git repository.
+   *
+   * @return
+   *   The name of the branch as under refs/heads HEAD points to.
+   */
+  public function fetchDefaultBranch();
+
+  /**
    * Relocate the repository on disk to the new target location, then optionally
    * update the repository record in the database.
    */
