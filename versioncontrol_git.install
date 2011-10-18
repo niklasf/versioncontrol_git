@@ -87,6 +87,26 @@ function versioncontrol_git_schema() {
     'primary key' => array('item_revision_id'),
   );
 
+  $schema['versioncontrol_git_repositories'] = array(
+    'description' => 'A one-to-one table extending {versioncontrol_repositories} with additional git-specific data.',
+    'fields' => array(
+      'repo_id' => array(
+        'description' => 'Foreign key to {versioncontrol_repositories}.repo_id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'default_branch' => array(
+        'description' => 'The default (HEAD) branch of the git repository.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('repo_id'),
+  );
+
   return $schema;
 }
 
@@ -188,4 +208,59 @@ function versioncontrol_git_update_6202() {
   }
 
   return $ret;
+}
+
+/**
+ * Adds the versioncontrol_git_repositories table.
+ */
+function versioncontrol_git_update_6203() {
+  $ret = array();
+
+  $versioncontrol_git_repositories_schema = array(
+    'description' => 'A one-to-one table extending {versioncontrol_repositories} with additional git-specific data.',
+    'fields' => array(
+      'repo_id' => array(
+        'description' => 'Foreign key to {versioncontrol_repositories}.repo_id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'default_branch' => array(
+        'description' => 'The default (HEAD) branch of the git repository.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('repo_id'),
+  );
+
+  db_create_table($ret, 'versioncontrol_git_repositories', $versioncontrol_git_repositories_schema);
+
+  return $ret;
+}
+
+/**
+ * Reads the default branches from all existing Git repositories to synchronize
+ * the database.
+ */
+function versioncontrol_git_update_6204() {
+  // Get the repository manager queue.
+  drupal_queue_include();
+  $queue = DrupalQueue::get('versioncontrol_repomgr');
+
+  // Load all git repositories and add them to the queue.
+  $repos = versioncontrol_repository_load_multiple(NULL, array('vcs' => 'git'));
+  foreach ($repos as $repo) {
+    $queue->createItem(array(
+      'operation' => array(
+        'fetchDefaultBranch' => array(),
+        'save' => array(),
+      ),
+      'repository' => $repo,
+    ));
+  }
+
+  return array();
 }
