@@ -246,6 +246,9 @@ function versioncontrol_git_update_6203() {
  * the database.
  */
 function versioncontrol_git_update_6204() {
+  // Clear the autoload caches to make the new classes available.
+  cache_clear_all();
+
   // Get the repository manager queue.
   drupal_queue_include();
   $queue = DrupalQueue::get('versioncontrol_repomgr');
