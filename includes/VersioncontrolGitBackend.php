@@ -13,6 +13,7 @@ class VersioncontrolGitBackend extends VersioncontrolBackend {
     );
 
   public $classesControllers = array(
+    'repo' => 'VersioncontrolGitRepositoryController',
     'operation' => 'VersioncontrolGitOperationController',
     'item' => 'VersioncontrolGitItemController',
     'event' => 'VersioncontrolGitEventController',

@@ -87,6 +87,26 @@ function versioncontrol_git_schema() {
     'primary key' => array('item_revision_id'),
   );
 
+  $schema['versioncontrol_git_repositories'] = array(
+    'description' => 'A one-to-one table extending {versioncontrol_repositories} with additional git-specific data.',
+    'fields' => array(
+      'repo_id' => array(
+        'description' => 'Foreign key to {versioncontrol_repositories}.repo_id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'default_branch' => array(
+        'description' => 'The default (HEAD) branch of the git repository.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('repo_id'),
+  );
+
   $schema['versioncontrol_git_event_data'] = array(
     'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
     'fields' => array(
@@ -256,10 +276,68 @@ function versioncontrol_git_update_6202() {
 }
 
 /**
+ * Adds the versioncontrol_git_repositories table.
+ */
+function versioncontrol_git_update_6203() {
+  $ret = array();
+
+  $versioncontrol_git_repositories_schema = array(
+    'description' => 'A one-to-one table extending {versioncontrol_repositories} with additional git-specific data.',
+    'fields' => array(
+      'repo_id' => array(
+        'description' => 'Foreign key to {versioncontrol_repositories}.repo_id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'default_branch' => array(
+        'description' => 'The default (HEAD) branch of the git repository.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('repo_id'),
+  );
+
+  db_create_table($ret, 'versioncontrol_git_repositories', $versioncontrol_git_repositories_schema);
+
+  return $ret;
+}
+
+/**
+ * Reads the default branches from all existing Git repositories to synchronize
+ * the database.
+ */
+function versioncontrol_git_update_6204() {
+  // Clear the autoload caches to make the new classes available.
+  cache_clear_all();
+
+  // Get the repository manager queue.
+  drupal_queue_include();
+  $queue = DrupalQueue::get('versioncontrol_repomgr');
+
+  // Load all git repositories and add them to the queue.
+  $repos = versioncontrol_repository_load_multiple(NULL, array('vcs' => 'git'));
+  foreach ($repos as $repo) {
+    $queue->createItem(array(
+      'operation' => array(
+        'fetchDefaultBranch' => array(),
+        'save' => array(),
+      ),
+      'repository' => $repo,
+    ));
+  }
+
+  return array();
+}
+
+/**
  * Introduce the {versioncontrol_git_event_data} table, which stores extended
  * "event" (e.g., push) data in tandem with {versioncontrol_event_log}.
  */
-function versioncontrol_git_update_6203() {
+function versioncontrol_git_update_6205() {
   $ret = array();
   $schema = array(
     'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
@@ -329,7 +407,7 @@ function versioncontrol_git_update_6203() {
  * Add the 'ff' field to {versioncontrol_git_event_data}, which records whether
  * a branch ref update was fast-forward or not.
  */
-function versioncontrol_git_update_6204() {
+function versioncontrol_git_update_6206() {
   $ret = array();
   $spec = array(
     'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
@@ -345,7 +423,7 @@ function versioncontrol_git_update_6204() {
 /**
  * Migrate the git push log data from the drupalorg modules, if they are present.
  */
-function versioncontrol_git_update_6205(&$sandbox) {
+function versioncontrol_git_update_6207(&$sandbox) {
   $ret = array();
   $ret['#finished'] = 1;
   

@@ -3,6 +3,78 @@
 class VersioncontrolGitRepository extends VersioncontrolRepository {
 
   /**
+   * The branch name of the default (HEAD) branch or empty if this information
+   * is not available.
+   */
+  public $default_branch = 'master';
+
+  protected function backendDelete($options) {
+    db_delete('versioncontrol_git_repositories')
+      ->condition('repo_id', $this->repo_id)
+      ->execute();
+  }
+
+  protected function backendUpdate($options) {
+    db_update('versioncontrol_git_repositories')
+      ->condition('repo_id', $this->repo_id)
+      ->fields(array('default_branch' => $this->default_branch))
+      ->execute();
+  }
+
+  protected function backendInsert($options) {
+    db_insert('versioncontrol_git_repositories')
+      ->fields(array(
+        'repo_id' => $this->repo_id,
+        'default_branch' => $this->default_branch,
+      ))
+      ->execute();
+  }
+
+  /**
+   * Get the default (HEAD) branch of the repository.
+   *
+   * @return
+   *   The name of the default branch or empty if there is none.
+   */
+  public function getDefaultBranch() {
+    return $this->default_branch;
+  }
+
+  /**
+   * Changes the default branch. Note that this is an async operation.
+   *
+   * @param $branch_name
+   *   The name of the branch that should be checked out by default, when the
+   *   repository is closed.
+   *
+   * @throws Exception
+   *   If the branch doesn't exist.
+   */
+  public function setDefaultBranch($branch_name) {
+    // Ensure the branch exists.
+    if (!$this->loadBranches(NULL, array('name' => $branch_name))) {
+      throw new Exception(t('The branch %branch_name doesn\'t exist.', array('%branch_name' => $branch_name)));
+    }
+
+    // The job to be queued.
+    $job = array(
+      'operation' => array(
+        'setDefaultBranch' => array($branch_name),
+        'save' => array(),
+      ),
+      'repository' => $this,
+    );
+
+    // Queue the write operation on the database an the repository.
+    drupal_queue_include();
+    $queue = DrupalQueue::get('versioncontrol_repomgr');
+    if (!$queue->createItem($job)) {
+      watchdog('versioncontrol_git', t('Failed to enqueue a default branch change for the Git repository at %root.', array('%root' => $this->root)));
+      throw new Exception(t('An error occured while attempting to enqueue switching the default branch.'), 'error');
+    }
+  }
+
+  /**
    * State flag indicating whether or not the GIT_DIR variable has been pushed
    * into the environment.
    *
@@ -107,7 +179,6 @@ class VersioncontrolGitRepository extends VersioncontrolRepository {
 
     $data = array(
       'repo_id' => $this->repo_id,
-      'action' => VERSIONCONTROL_ACTION_MODIFIED,
       'label_id' => NULL,
     );
     $logs = $this->exec('show-ref --heads');
@@ -129,7 +200,6 @@ class VersioncontrolGitRepository extends VersioncontrolRepository {
     $tags = array();
     $data = array(
       'repo_id' => $this->repo_id,
-      'action' => VERSIONCONTROL_ACTION_MODIFIED,
       'label_id' => NULL,
     );
 
@@ -163,7 +233,7 @@ class VersioncontrolGitRepository extends VersioncontrolRepository {
    *  Logged output from the command; an array of either strings or file
    *  pointers.
    */
-  protected function exec($command) {
+  public function exec($command) {
     if (!$this->envSet) {
       $this->setEnv();
     }

@@ -3,7 +3,6 @@
  * @file
  * Git backend for Version Control API - Provides Git commit information and
  * account management as a pluggable backend.
- * FIXME add an action to operation_labels
  *
  * Copyright 2008 by Jimmy Berry ("boombatower", http://drupal.org/user/214218)
  * Copyright 2009-2010 by Cornelius Riemenschneider ("CorniI", http://drupal.org/user/136353)
@@ -81,7 +80,7 @@ function _versioncontrol_git_log_update_repository(VersioncontrolGitRepository &
 
   // Insert new commits in the database.
   foreach ($commits_new as $hash) {
-    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
+    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%at%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
     $output = _versioncontrol_git_log_exec($command);
     _versioncontrol_git_log_parse_and_insert_commit($repository, $output, $branches_in_db_by_name);
   }
@@ -319,12 +318,12 @@ function _versioncontrol_git_log_parse_and_insert_commit(VersioncontrolRepositor
   // Get author data
   $author_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
   $author_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+  $author_date = trim(next($logs));
+
   // Get committer data
   $committer_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
   $committer_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
-
-  // Get date as timestamp
-  $date = trim(next($logs));
+  $committer_date = trim(next($logs));
 
   // Get revision message.
   // TODO: revisit!
@@ -355,7 +354,8 @@ function _versioncontrol_git_log_parse_and_insert_commit(VersioncontrolRepositor
     'committer_name' => $committer_name,
     'parent_commit' => reset($parents),
     'merge' => $merge,
-    'date' => $date,
+    'author_date' => $author_date,
+    'committer_date' => $committer_date,
     'message' => $message,
     'repository' => $repository,
   );
@@ -524,7 +524,7 @@ function _versioncontrol_git_log_process_tags($repository, $tags_new) {
       'repo_id' => $repository->repo_id,
     );
 
-    $tag = $repository->getBackend()->buildEntity('tag', $tag_data + array('action' => VERSIONCONTROL_ACTION_ADDED));
+    $tag = $repository->getBackend()->buildEntity('tag', $tag_data);
     $tag->insert();
   }
 }
