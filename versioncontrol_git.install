@@ -267,3 +267,16 @@ function versioncontrol_git_update_6204() {
 
   return array();
 }
+
+/**
+ * When adding the versioncontrol_git_repositories table in
+ * versioncontrol_git_update_6203() it should have been populated with empty
+ * rows. Truncate it, do that and run versioncontrol_git_update_6204() again.
+ */
+function versioncontrol_git_update_6205() {
+  db_truncate('versioncontrol_git_repositories');
+  db_query("INSERT INTO {versioncontrol_git_repositories} (repo_id, default_branch) SELECT repo_id, '' FROM {versioncontrol_repositories} WHERE vcs = 'git'");
+
+  // Call the old update function instead of copying the code here.
+  return versioncontrol_git_update_6204();
+}
