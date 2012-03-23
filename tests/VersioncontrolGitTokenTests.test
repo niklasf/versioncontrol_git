@@ -16,7 +16,11 @@ class VersioncontrolGitTokenTests extends VersioncontrolGitTestCase {
       'group' => t('Version Control Git'),
     );
   }
-  
+
+  public function setUp() {
+    parent::setUp('token');
+  }
+
   /**
    * Tests if the event-git token is properly replaced.
    */
@@ -40,12 +44,41 @@ class VersioncontrolGitTokenTests extends VersioncontrolGitTestCase {
             '0000000000000000000000000000000000000000 b1e97e0f979c5e3580942b335e85bf17c3216397 refs/tags/simple'. PHP_EOL;
     $object = $this->versioncontrolSimulatePush($data, array('repository' => $repo));
     
-    $expected = 'divclassitemlistulliclassfirstBranchenhancementswasdeletedliliBranchmasterwasupdatedwiththefollowingcommitsdivclassitemlistulliclassfirst28e2c35unalineamaslili0f0280aAnothercommitbyotheruserlili550a5fbanotherusercommitlili0e49a5eMergebranchesfixesandenhancementsliliclasslast82add9cunalineamasliuldivliliBranchfeaturewascreateditcontainsthefollowingcommitsdivclassitemlistulliclassfirst61dda57agregarunfolderejemplo1paratrackerlilib1e97e0algodecontenido2SignedoffbyMarcoAntonioVillegasVegamarvil07gmailcomliliclasslast4817efainicialliuldivliliTagannotatedwasdeletedliliclasslastTagsimplewascreatedandpointstob1e97e0algodecontenido2SignedoffbyMarcoAntonioVillegasVegamarvil07gmailcomliuldiv';
-    
-    $render = token_replace_multiple($message, array('VersioncontrolEvent' => $object), '[', ']', array(), TRUE);
-    $render = ereg_replace("[^A-Za-z0-9]", "", $render);
-    
-    $this->assertEqual(str_replace(PHP_EOL, '', $expected), str_replace(PHP_EOL, '', $render), t('Token integration is returned the expected value.'));
+    $expected = <<<EOMSG
+<div class="item-list"><ul><li class="first">Branch enhancements was deleted.</li>
+<li>Branch master was updated with the following commits:<div class="item-list"><ul><li class="first">0f0280a: Another commit by other user.
+</li>
+<li>550a5fb: another user commit
+</li>
+<li>0e49a5e: Merge branches &#039;fixes&#039; and &#039;enhancements&#039;
+</li>
+<li>82add9c: una linea mas
+</li>
+<li class="last">28e2c35: una linea mas
+</li>
+</ul></div></li>
+<li>Branch feature was created, it contains the following commits:<div class="item-list"><ul><li class="first">61dda57: agregar un folder
+
+ejemplo #1 para tracker
+</li>
+<li>b1e97e0: algo de contenido 2
+
+Signed-off-by: Marco Antonio Villegas Vega &lt;marvil07@gmail.com&gt;
+</li>
+<li class="last">4817efa: inicial
+</li>
+</ul></div></li>
+<li>Tag annotated was deleted.</li>
+<li class="last">Tag simple was created and points to b1e97e0: algo de contenido 2
+
+Signed-off-by: Marco Antonio Villegas Vega &lt;marvil07@gmail.com&gt;
+.</li>
+</ul></div>
+EOMSG;
+
+    $output = token_replace_multiple($message, array('VersioncontrolEvent' => $object), '[', ']', array(), TRUE);
+
+    $this->assertEqual($expected, $output, t('Token integration is returned the expected value.'));
   }
-  
+
 }
