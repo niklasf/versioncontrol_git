@@ -83,6 +83,22 @@ function versioncontrol_git_views_api() {
 }
 
 /**
+ * Implementation of hook_theme().
+ */
+function versioncontrol_git_theme($existing, $type, $theme, $path) {
+  return array(
+    'versioncontrol_git_event' => array(
+      'variables' => array('event' => NULL),
+      'file' => 'versioncontrol_git.theme.inc',
+    ),
+    'versioncontrol_git_operation' => array(
+      'variables' => array('operation' => NULL),
+      'file' => 'versioncontrol_git.theme.inc',
+    ),
+  );
+}
+
+/**
  * Get & verify the path to the git binary.
  *
  * @param bool $error
@@ -141,4 +157,40 @@ function versioncontrol_git_ctools_plugin_directory($module, $plugin) {
   if ($module == 'versioncontrol') {
     return "includes/plugins/$plugin";
   }
+}
+
+/**
+ * Implementation of hook token_list.
+ */
+function versioncontrol_git_token_list($type = 'all') {
+  $tokens = array();
+  
+  if (($type == 'VersioncontrolEvent') || ($type == 'all')) {
+    $tokens['Versioncontrol Git Event'] = array(
+      'event-git' => t('A list of reference changes this event introduced'),
+    );
+  }
+  
+  return $tokens;
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function versioncontrol_git_token_values($type, $object = NULL, $options = array()) {
+  $values = array();
+  
+  if (empty($object)) {
+    return $values;
+  }
+  
+  switch($type) {
+    case "VersioncontrolEvent":
+      $values = array(
+        'event-git' => theme('versioncontrol_git_event', $object),
+      );
+      
+  }
+  
+  return $values;
 }

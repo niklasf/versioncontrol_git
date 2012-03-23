@@ -107,6 +107,71 @@ function versioncontrol_git_schema() {
     'primary key' => array('repo_id'),
   );
 
+  $schema['versioncontrol_git_event_data'] = array(
+    'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
+    'fields' => array(
+      'elid' => array(
+        'description' => 'Foreign key to {versioncontrol_event_log}.elid; identifies the Git event to which this extended linking data corresponds.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'refname' => array(
+        'description' => 'The name of the ref that was updated.',
+        'type' => 'varchar',
+        'not null' => TRUE,
+      ),
+      'label_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'reftype' => array(
+        'description' => '2 == branch, 3 == tag.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'old_sha1' => array(
+        'description' => 'The object to which this ref pointed before the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'new_sha1' => array(
+        'description' => 'The object to which this ref pointed after the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'commits' => array(
+        'description' => 'For incremental branch updates (i.e., excluding branch creation and deletion), a serialized list of all the commits contained in the push.',
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+      'ff' => array(
+        'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('elid', 'refname'),
+    'indexes' => array(
+      'old_sha1' => array('old_sha1'),
+      'new_sha1' => array('new_sha1'),
+    ),
+  );
+
+  if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
+    // This is evil, but there is not standard way to change a field collation.
+    $schema['versioncontrol_git_event_data']['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
+  }
+  else {
+    $schema['versioncontrol_git_event_data']['fields']['refname']['length'] = 255;
+  }
+
   return $schema;
 }
 
@@ -279,4 +344,156 @@ function versioncontrol_git_update_6205() {
 
   // Call the old update function instead of copying the code here.
   return versioncontrol_git_update_6204();
+}
+
+/**
+ * Introduce the {versioncontrol_git_event_data} table, which stores extended
+ * "event" (e.g., push) data in tandem with {versioncontrol_event_log}.
+ */
+function versioncontrol_git_update_6206() {
+  $ret = array();
+  $schema = array(
+    'description' => 'Links Version control events, as represented by the {versioncontrol_event_log} table, with real Git commit, branch and tag data.',
+    'fields' => array(
+      'elid' => array(
+        'description' => 'Foreign key to {versioncontrol_event_log}.elid; identifies the Git event to which this extended linking data corresponds.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'refname' => array(
+        'description' => 'The name of the ref that was updated.',
+        'type' => 'varchar',
+        'not null' => TRUE,
+      ),
+      'label_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'reftype' => array(
+        'description' => '2 == branch, 3 == tag.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'old_sha1' => array(
+        'description' => 'The object to which this ref pointed before the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'new_sha1' => array(
+        'description' => 'The object to which this ref pointed after the push.',
+        'type' => 'char',
+        'length' => 40,
+        'not null' => TRUE,
+      ),
+      'commits' => array(
+        'description' => 'For incremental branch updates (i.e., excluding branch creation and deletion), a serialized list of all the commits contained in the push.',
+        'type' => 'blob',
+        'size' => 'big',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('elid', 'refname'),
+    'indexes' => array(
+      'old_sha1' => array('old_sha1'),
+      'new_sha1' => array('new_sha1'),
+    ),
+  );
+
+  if (in_array($GLOBALS['db_type'], array('mysql', 'mysqli'))) {
+    // This is evil, but there is not standard way to change a field collation.
+    $schema['fields']['refname']['mysql_type'] = "VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_bin";
+  }
+  else {
+    $schema['fields']['refname']['length'] = 255;
+  }
+
+  db_create_table($ret, 'versioncontrol_git_event_data', $schema);
+  return $ret;
+}
+
+/**
+ * Add the 'ff' field to {versioncontrol_git_event_data}, which records whether
+ * a branch ref update was fast-forward or not.
+ */
+function versioncontrol_git_update_6207() {
+  $ret = array();
+  $spec = array(
+    'description' => 'For branch updates, indicates whether or not the ref update was a fast-forward.',
+    'type' => 'int',
+    'size' => 'tiny',
+    'not null' => FALSE,
+  );
+
+  db_add_field($ret, 'versioncontrol_git_event_data', 'ff', $spec);
+  return $ret;
+}
+
+/**
+ * Migrate the git push log data from the drupalorg modules, if they are present.
+ */
+function versioncontrol_git_update_6208(&$sandbox) {
+  $ret = array();
+  $ret['#finished'] = 1;
+  
+  if (!isset($sandbox['current'])) {
+    db_change_field($ret, 'versioncontrol_git_event_data', 'commits', 'commits', array('type' => 'blob', 'size' => 'big', 'not null' => FALSE));
+  }
+  
+  if (module_exists('drupalorg_git_gateway')) {
+    if (!isset($sandbox['current'])) {
+      $sandbox['current'] = 0;
+      $sandbox['max'] = db_result(db_query('SELECT COUNT(*) FROM {drupalorg_git_push_log} WHERE repo_id IN (SELECT repo_id FROM {versioncontrol_repositories})')) - 1;
+      // $sandbox['limit'] = ($sandbox['max'] > 200 ? $sandbox['max'] / 100 : $sandbox['max']);
+      $sandbox['limit'] = 300;
+      
+      db_query('TRUNCATE {versioncontrol_event_log};');
+      db_query('TRUNCATE {versioncontrol_git_event_data};');
+    }
+
+    $backend = versioncontrol_get_backends('git');
+
+    $events_query = db_query_range('SELECT push_id, uid, timestamp, repo_id FROM {drupalorg_git_push_log} WHERE repo_id IN (SELECT repo_id FROM {versioncontrol_repositories})', $sandbox['current'], $sandbox['limit']);
+    
+    while ($obj = db_fetch_object($events_query)) {
+      $push_id = $obj->push_id;
+      unset($obj->push_id);
+
+      if ($repo = $backend->loadEntity('repo', array($obj->repo_id))) {
+        $refs = array();
+        $refs_query = db_query('SELECT reftype, refname, old_obj AS old_sha1, new_obj AS new_sha1 FROM {drupalorg_git_push_log_refs} WHERE push_id = %d', $push_id);
+        while ($ref = db_fetch_array($refs_query)) {
+          if ($ref['reftype'] == 1) {
+            $ref['reftype'] = VERSIONCONTROL_OPERATION_BRANCH;
+          }
+          elseif ($ref['reftype'] == 2) {
+            $ref['reftype'] = VERSIONCONTROL_OPERATION_TAG;
+          }
+
+          $ref['label_id'] = 0;
+          
+          $refs[] = $ref;
+        }
+        
+        $obj->refs = $refs;
+        
+        $event = $repo->getBackend()->buildEntity('event', $obj);
+        
+        $event->insert();
+
+        $sync = $repo->getSynchronizer();
+        $sync->syncEvent($event);
+      }
+      
+      $sandbox['current'] ++;
+    }
+    
+    $ret['#finished'] = (empty($sandbox['max']) ? 1 : ($sandbox['current'] / $sandbox['max']));
+  }
+  
+  return $ret;
 }

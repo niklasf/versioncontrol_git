@@ -1,0 +1,161 @@
+<?php
+
+/**
+ * @file
+ *
+ * Tests ensuring that VersioncontrolGitEvent works.
+ */
+
+require_once drupal_get_path('module', 'versioncontrol_git') . '/tests/VersioncontrolGitTestCase.test';
+
+class VersioncontrolGitEventTests extends VersioncontrolGitTestCase {
+  protected $repos = array();
+
+  /**
+   * Implementation of getInfo().
+   */
+  public static function getInfo() {
+    return array(
+      'name' => t('Git event tests'),
+      'description' => t('Tests ensuring that Git events work.'),
+      'group' => t('Version Control Git'),
+    );
+  }
+
+  /**
+   * Tests if VersioncontrolGitEvents are properly created and inserted in the database.
+   */
+  public function testCreation() {
+    // Build and insert.
+    $repo = $this->versioncontrolCreateRepoFromTestRepo();
+
+    $data = array(
+      'repository' => $repo,
+      'refname' => $this->randomString(255),
+      'label_id' => 0,
+      'reftype' => 2,
+      'old_obj' => $this->randomString(40),
+      'new_obj' => $this->randomString(40),
+      'commits' => serialize(array()),
+    );
+
+    $event = $this->versioncontrolCreateEvent('git', $data);
+
+    // Verify.
+    $db_event = db_select('versioncontrol_git_event_data', 'ged')
+      ->fields('ged')
+      ->condition('elid', $event->elid)
+      ->execute()
+      ->fetchObject();
+    foreach ($data as $key => $val) {
+      if ($key != 'repository') {
+        $this->assertEqual($val, $db_event->$key, t('%key git event attribute is stored correctly', array('%key' => $key)), t('Creation'));
+      }
+    }
+  }
+
+  public function testUpdate() {
+    $event = $this->versioncontrolCreateEvent('git');
+
+    $data = array(
+      'refname' => $this->randomString(255),
+      'label_id' => mt_rand(0, 100),
+      'reftype' => 2,
+      'old_obj' => $this->randomString(40),
+      'new_obj' => $this->randomString(40),
+      'commits' => serialize(array($this->randomString(40), $this->randomString(40), $this->randomString(40))),
+    );
+
+    $event->refname = $data['refname'];
+    $event->label_id = $data['label_id'];
+    $event->reftype = $data['reftype'];
+    $event->old_obj = $data['old_obj'];
+    $event->new_obj = $data['new_obj'];
+    $event->commits = $data['commits'];
+
+    $event->update();
+
+    $db_event = db_select('versioncontrol_git_event_data', 'el')
+      ->fields('el')
+      ->condition('elid', $event->elid)
+      ->execute()
+      ->fetchObject();
+    foreach ($data as $key => $val) {
+      $this->assertEqual($val, $db_event->$key, t('%key git event attribute is updated correctly', array('%key' => $key)), t('Update'));
+    }
+
+  }
+
+  public function testDelete() {
+    $event = $this->versioncontrolCreateEvent('git');
+    $event->delete();
+
+    $result = db_select('versioncontrol_git_event_data', 'el')
+      ->fields('el')
+      ->condition('elid', $event->elid)
+      ->execute();
+    foreach ($result as $db_event) {
+      $this->fail(t('The git event was not deleted correctly.'), t('Delete'));
+    }
+  }
+
+  /**
+   * Test if commits linked to a VersioncontrolGitEvent are properly loaded.
+   */
+  public function testLoadCommits() {
+    $repo = $this->versioncontrolCreateRepoFromTestRepo();
+
+    $data = array(
+      'repository' => $repo,
+    );
+
+    $commits = array();
+    $commits[] = $this->versioncontrolCreateOperation('git', $data);
+    $commits[] = $this->versioncontrolCreateOperation('git', $data);
+    $commits[] = $this->versioncontrolCreateOperation('git', $data);
+
+    $commits_raw = array();
+    foreach ($commits as $commit) {
+      $commits_raw[] = $commit->revision;
+    }
+
+    $data['commits'] = serialize($commits_raw);
+
+    $event = $this->versioncontrolCreateEvent('git', $data);
+
+    $commits_loaded = $event->loadCommits();
+    foreach ($commits_loaded as &$commit) {
+      $commit = $commit->revision;
+    }
+
+    $this->assertEqual($commits_raw, array_values($commits_loaded), t("Commits linked to VersioncontrolGitEvent are properly loaded."));
+  }
+
+  public function testLoadLabels() {
+    $repo = $this->versioncontrolCreateRepoFromTestRepo();
+
+    $data = array(
+      'repository' => $repo,
+    );
+
+    $branch = $this->versioncontrolCreateBranch('git', $data);
+    $tag = $this->versioncontrolCreateTag('git', $data);
+
+    $commit = $this->versioncontrolCreateOperation('git', $data + array('labels' => array($branch, $tag)));
+
+    $event = $this->versioncontrolCreateEvent('git', $data + array('commits' => serialize(array($commit->revision))));
+
+    $labels = array_values($event->loadLabels());
+    $this->assertEqual(count($labels), 2, t("loadLabels method returns the correct amount of VersioncontrolLabel's."));
+    $this->assertEqual($labels[0]->label_id, $branch->label_id, t("The first returned VersioncontrolLabel is the same as the one that was inserted first."));
+    $this->assertEqual($labels[1]->label_id, $tag->label_id, t("The first returned VersioncontrolLabel is the same as the one that was inserted first."));
+
+    $branches = array_values($event->loadBranches());
+    $this->assertEqual(count($branches), 1, t("loadBranches method returns the correct amount of VersioncontrolLabel's."));
+    $this->assertEqual($branches[0]->label_id, $branch->label_id, t("The first returned VersioncontrolLabel is the right branch."));
+
+    $tags = array_values($event->loadTags());
+    $this->assertEqual(count($tags), 1, t("loadTags method returns the correct amount of VersioncontrolLabel's."));
+    $this->assertEqual($tags[0]->label_id, $tag->label_id, t("The first returned VersioncontrolLabel is the right tag."));
+  }
+}
