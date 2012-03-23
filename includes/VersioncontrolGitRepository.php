@@ -166,8 +166,9 @@ class VersioncontrolGitRepository extends VersioncontrolRepository {
     if (!ini_get('safe_mode')) {
       set_time_limit(3600);
     }
-    require_once drupal_get_path('module', 'versioncontrol_git') .'/versioncontrol_git.log.inc';
-    return _versioncontrol_git_log_update_repository($this);
+    $sync = $this->getSynchronizer();
+    // FIXME This should determine if the repo is purged/new, and if so pick syncInitial
+    return $sync->syncFull();
   }
 
   /**

@@ -34,13 +34,13 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     return $branches;
   }
 
-  protected function fetchCommitsInDatabase($label_id = 0) {
+  protected function fetchCommitHashesInDatabase($label_id = 0) {
     $conditions = array();
-    
+
     if (!empty($label_id)) {
       $conditions['branches'] = $label_id;
     }
-    
+
     $commits = $this->repository->loadCommits(array(), $conditions, array('may cache' => FALSE));
 
     $revisions = array();
@@ -63,15 +63,15 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * done
    */
   public function syncFull() {
-    $this->verify();
-    $this->prepare();
+    if (!$this->verify() || !$this->prepare()) {
+      return FALSE;
+    }
 
     $this->repository->updateLock();
     $this->repository->update();
 
-    /**
-     * Branches
-     */
+    // 1. Process branches
+
     // Fetch branches from the repo and load them from the db.
     $branches_repo = $this->repository->fetchBranches();
     $branches_db = $this->fetchBranchesInDatabase();
@@ -97,22 +97,19 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       $branch->delete();
     }
 
-    unset($branches_repo);
-    unset($branches_db);
+    // 2. Process commits
 
-    /**
-     * Commits
-     */
     // Fetch commits from the repo and load them from the db.
+    $commits_repo_hashes = $this->repository->fetchCommits();
+    $commits_db_hashes = $this->fetchCommitHashesInDatabase();
 
     // Insert new commits in the database.
-    foreach (array_diff($this->repository->fetchCommits(), $this->fetchCommitsInDatabase()) as $hash) {
-      $this->parseCommit($hash, $branches);
+    foreach (array_diff($commits_repo_hashes, $commits_db_hashes) as $hash) {
+      $this->parseAndInsertCommit($hash, $branches);
     }
 
-    /**
-     * Tags
-     */
+    // 3. Process tags
+
     // Insert new tags in the database.
     $tags_in_repo = $this->repository->fetchTags();
     $tags_in_db = $this->repository->loadTags();
@@ -145,10 +142,10 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $logs The output of 'git log' to parse
    * @param array $branch_label_list An associative list of branchname => VersioncontrolBranch
    */
-  protected function parseCommit($hash, $branches) {
-    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
+  protected function parseAndInsertCommit($hash, $branches) {
+    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%at%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
     $logs = $this->execute($command);
-      
+
     // Get commit hash (vcapi's "revision")
     $revision = trim(next($logs));
 
@@ -160,19 +157,20 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $merge = !empty($parents[1]); // Multiple parents indicates a merge
 
     // Get author data
-    $author_name = trim(next($logs));
-    $author_email = trim(next($logs));
-    // Get committer data
-    $committer_name = trim(next($logs));
-    $committer_email = trim(next($logs));
+    $author_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+    $author_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+    $author_date = trim(next($logs));
 
-    // Get date as timestamp
-    $date = trim(next($logs));
+    // Get committer data
+    $committer_name = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+    $committer_email = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)));
+    $committer_date = trim(next($logs));
 
     // Get revision message.
     // TODO: revisit!
     $message = '';
-    while (($line = trim(next($logs))) !== FALSE) {
+    $i = 0;
+    while (($line = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)))) !== FALSE) {
       if ($line == 'ENDOFOUTPUTGITMESSAGEHERE') {
         if (substr($message, -2) === "\n\n") {
           $message = substr($message, 0, strlen($message) - 1);
@@ -180,6 +178,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         break;
       }
       $message .= $line ."\n";
+      $i++;
     }
 
     // This is either a (kind of) diffstat for each modified file or a list of
@@ -196,7 +195,8 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       'committer_name' => $committer_name,
       'parent_commit' => reset($parents),
       'merge' => $merge,
-      'date' => $date,
+      'author_date' => $author_date,
+      'committer_date' => $committer_date,
       'message' => $message,
       'repository' => $this->repository,
     );
@@ -580,7 +580,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       
         // 2.1. Add all commits that aren't currently in the branch
         $commits = $this->getCommitInterval($ref->old_sha1, $ref->new_sha1);
-        $commits_db = $this->fetchCommitsInDatabase($label->label_id);
+        $commits_db = $this->fetchCommitHashesInDatabase($label->label_id);
         
         // Don't even think about parsing when there are more than five commits.
         if (count($commits) > 5) {
@@ -595,7 +595,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
           
           if (empty($commit)) {
             // Insert completly new commit object into database. 
-            $this->parseCommit($revision, $branches_db);
+            $this->parseAndInsertCommit($revision, $branches_db);
           }
           else {
             // Link existing commit object to branch.
@@ -654,6 +654,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
       return FALSE;
     }
+    return TRUE;
   }
 
   protected function finalize() {
@@ -668,6 +669,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
       drupal_set_message(t('The repository %name at <code>@root</code> is not a valid Git bare repository.', array('%name' => $repository->name, '@root' => $repository->root)), 'error');
       return FALSE;
     }
+    return TRUE;
   }
 }
 
