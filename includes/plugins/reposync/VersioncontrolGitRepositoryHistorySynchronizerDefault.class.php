@@ -143,7 +143,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
    * @param array $branch_label_list An associative list of branchname => VersioncontrolBranch
    */
   protected function parseAndInsertCommit($hash, $branches) {
-    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%at%n%cn%n%ce%n%ct%n%B%nENDOFOUTPUTGITMESSAGEHERE\" " . escapeshellarg($hash);
+    $command = "show --numstat --summary --pretty=format:\"%H%n%P%n%an%n%ae%n%at%n%cn%n%ce%n%ct%n%B%n%x00\" " . escapeshellarg($hash);
     $logs = $this->execute($command);
 
     // Get commit hash (vcapi's "revision")
@@ -171,7 +171,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
     $message = '';
     $i = 0;
     while (($line = iconv("UTF-8", "UTF-8//IGNORE", trim(next($logs)))) !== FALSE) {
-      if ($line == 'ENDOFOUTPUTGITMESSAGEHERE') {
+      if ($line == "\0") {
         if (substr($message, -2) === "\n\n") {
           $message = substr($message, 0, strlen($message) - 1);
         }
@@ -375,7 +375,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
 
     // get a list of all tag names with the corresponding commit.
     $tag_commit_list = $this->getTagCommitList($tags_new);
-    $format = '%(objecttype)%0a%(objectname)%0a%(refname)%0a%(taggername) %(taggeremail)%0a%(taggerdate)%0a%(contents)ENDOFGITTAGOUTPUTMESAGEHERE';
+    $format = '%(objecttype)%0a%(objectname)%0a%(refname)%0a%(taggername) %(taggeremail)%0a%(taggerdate)%0a%(contents)%x00';
     foreach($tag_commit_list as $tag_name => $tag_commit) {
       $exec = "for-each-ref --format=\"$format\" refs/tags/" . escapeshellarg($tag_name);
       $logs_tag_msg = $this->execute($exec);
@@ -401,7 +401,7 @@ class VersioncontrolGitRepositoryHistorySynchronizerDefault implements Versionco
         $i = 0;
         while (true) {
           $line = $logs_tag_msg[$i + 6];
-          if($logs_tag_msg[$i + 7] == 'ENDOFGITTAGOUTPUTMESAGEHERE') {
+          if($logs_tag_msg[$i + 7] == "\0") {
             $message .= $line;
             break;
           }
